@@ -1,0 +1,163 @@
+
+:root {
+  font-family: Inter, system-ui, Arial, sans-serif;
+  color: #e8efff;
+  background: #080e1c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.header {
+  padding: 24px 7%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #23304d;
+}
+
+.brand {
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #a9c4ff;
+}
+
+.tag {
+  color: #92a5c7;
+  font-size: 13px;
+}
+
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 50px 24px;
+}
+
+.hero {
+  margin-bottom: 40px;
+}
+
+.eyebrow {
+  color: #7ea7ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+
+h1 {
+  font-size: clamp(38px, 6vw, 72px);
+  line-height: 1.08;
+  margin: 18px 0;
+}
+
+.hero p {
+  max-width: 650px;
+  color: #9aabc9;
+  line-height: 1.7;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.panel {
+  padding: 30px;
+  border: 1px solid #253556;
+  border-radius: 16px;
+  background: #111b30;
+}
+
+h2 {
+  margin-top: 0;
+  margin-bottom: 30px;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: #aabbd8;
+  margin: 20px 0 10px;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #344665;
+  background: #0b1426;
+  color: white;
+  font-size: 15px;
+}
+
+.site-info {
+  margin-top: 28px;
+  padding: 20px;
+  background: #182844;
+  border-radius: 10px;
+}
+
+.site-info h3 {
+  color: #91b4ff;
+  margin-top: 0;
+}
+
+.site-info p {
+  margin: 9px 0;
+}
+
+.muted {
+  color: #9aabc9;
+}
+
+.metric {
+  padding: 20px 0;
+  border-bottom: 1px solid #293957;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.metric strong {
+  color: #89aefb;
+  text-align: right;
+}
+
+.notice {
+  margin-top: 25px;
+  padding: 18px;
+  border-radius: 8px;
+  background: #182844;
+  color: #afc0df;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+footer {
+  text-align: center;
+  padding: 30px;
+  color: #7c90b4;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
