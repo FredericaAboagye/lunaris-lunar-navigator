@@ -218,6 +218,33 @@ We welcome contributions from team members with backgrounds in computer science,
 - Document limitations.
 - Help prepare the final submission.
 
+
+## Lunar Candidate Site Coordinates
+
+Lunaris includes representative research candidate sites
+within NASA Artemis lunar south-pole landing regions.
+
+Site coordinates are taken from:
+
+Wueller et al. (2026), Journal of Geophysical Research:
+Planets, Table A1.
+https://doi.org/10.1029/2025JE009434
+
+NASA's October 2024 candidate landing regions:
+https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/
+
+These are reference locations for exploratory analysis,
+not certified or approved lunar landing sites.
+
+Astronomical data: NASA JPL Horizons.
+
+Current limitations:
+- Geometric horizon only
+- No local terrain obstruction model
+- No landing hazard or slope assessment
+- No certified solar-power or communication windows
+
+
 ## 🌿 GitHub Contribution Workflow
 
 Please do not push directly to `main` without coordinating with the team.

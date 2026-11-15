@@ -26,26 +26,34 @@ type Conditions = {
   limitations: string
 }
 
+
 const sites: Site[] = [
   {
     id: 'alpha',
-    name: 'South Polar Test Site',
-    latitude: -89.5,
-    longitude: 0,
+    name: 'Mons Mouton — MMO01',
+    latitude: -85.416,
+    longitude: 31.851,
   },
   {
     id: 'beta',
-    name: 'Test Site Beta',
-    latitude: -89,
-    longitude: 45,
+    name: 'Malapert Massif — MMA01',
+    latitude: -85.942,
+    longitude: -0.944,
   },
   {
     id: 'gamma',
-    name: 'Test Site Gamma',
-    latitude: -88.5,
-    longitude: 90,
+    name: 'de Gerlache Rim 2 — dGR201',
+    latitude: -88.389,
+    longitude: -68.865,
+  },
+  {
+    id: 'delta',
+    name: 'Nobile Rim 1 — NR101',
+    latitude: -85.295,
+    longitude: 36.917,
   },
 ]
+
 
 const API_URL =
   import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
@@ -338,8 +346,10 @@ function App() {
 
           <p className="muted">
             Observation time: 12:00 UTC.
-            All locations are demonstration coordinates,
-            not verified landing sites.
+            Representative research candidate sites from Wueller et al.
+            (2026). These coordinates are not approved touchdown
+            locations. Terrain obstruction and landing safety
+            are not yet evaluated.
           </p>
         </section>
 

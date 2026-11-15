@@ -52,13 +52,16 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="Lunaris NASA Data API")
 
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:5175",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
     ] + [
         origin.strip()
         for origin in os.getenv("FRONTEND_ORIGIN", "").split(",")
@@ -67,6 +70,7 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
 
 HORIZONS_URL = "https://ssd.jpl.nasa.gov/api/horizons.api"
 
