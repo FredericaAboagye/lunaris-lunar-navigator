@@ -1,16 +1,56 @@
- 
 from datetime import date, timedelta
 from math import isfinite
 import csv
 import requests
 import os
 
+
+from datetime import datetime, timezone
+
+
+def parse_horizons_observation(row):
+    """Parse a Horizons CSV observer-table row.
+
+    Expected columns for QUANTITIES=4:
+      0: UTC timestamp
+      1: solar-presence marker
+      2: lunar-presence marker
+      3: apparent azimuth in degrees
+      4: apparent elevation in degrees
+    """
+    if len(row) < 5:
+        raise ValueError(f"Incomplete Horizons row: {row!r}")
+
+    timestamp_text = row[0].strip()
+    azimuth_text = row[3].strip()
+    elevation_text = row[4].strip()
+
+    timestamp = datetime.strptime(
+        timestamp_text, "%Y-%b-%d %H:%M"
+    ).replace(tzinfo=timezone.utc)
+
+    azimuth = float(azimuth_text)
+    elevation = float(elevation_text)
+
+    if not (isfinite(azimuth) and isfinite(elevation)):
+        raise ValueError("Non-finite Horizons angles")
+
+    if not (0 <= azimuth <= 360 and -90 <= elevation <= 90):
+        raise ValueError("Horizons angle outside expected range")
+
+    return {
+        "time_utc": timestamp.isoformat().replace("+00:00", "Z"),
+        "azimuth_deg": round(azimuth, 3),
+        "elevation_deg": round(elevation, 3),
+        "above_geometric_horizon": elevation > 0,
+    }
+
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Lunaris NASA Data API")
 
-import os
 
 app.add_middleware(
     CORSMiddleware,
@@ -181,51 +221,29 @@ def get_position_series(body: str, lat: float, lon: float,
             )
 
         points = []
-
+        
         for index, row in enumerate(rows):
-            # Remove empty CSV fields, including trailing blanks.
-            values = [
-                field.strip()
-                for field in row
-                if field.strip()
-            ]
+            point = parse_horizons_observation(row)
 
-            if len(values) < 3:
-                raise ValueError(
-                    f"Incomplete Horizons observation: {row!r}"
+            expected_time = datetime(
+                day.year, day.month, day.day,
+                tzinfo=timezone.utc
+            ) + timedelta(hours=index * 2)
+
+            expected_iso = expected_time.isoformat().replace(
+                "+00:00", "Z"
             )
 
-            try:
-                azimuth = float(values[-2])
-                elevation = float(values[-1])
-            except ValueError as exc:
+            if point["time_utc"] != expected_iso:
                 raise ValueError(
-                    f"Could not parse azimuth/elevation: {row!r}"
-                ) from exc
+                    f"Unexpected timestamp: {point['time_utc']}"
+                )
 
-
-            if not (isfinite(azimuth) and isfinite(elevation)):
-                raise ValueError("Non-finite position received")
-
-            if not (0 <= azimuth <= 360 and
-                    -90 <= elevation <= 90):
-                raise ValueError("Invalid position angles")
-
-            hour = index * 2
-
-            points.append({
-                "hour": hour,
-                "time_utc": (
-                    f"{day.isoformat()}T{hour:02d}:00:00Z"
-                    if hour < 24
-                    else f"{next_day.isoformat()}T00:00:00Z"
-                ),
-                "azimuth_deg": round(azimuth, 3),
-                "elevation_deg": round(elevation, 3),
-                "above_geometric_horizon": elevation > 0,
-            })
+            point["hour"] = index * 2
+            points.append(point)
 
         return points
+
 
     except (requests.RequestException, ValueError,
             KeyError, IndexError, TypeError) as exc:
