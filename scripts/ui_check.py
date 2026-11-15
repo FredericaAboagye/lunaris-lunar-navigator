@@ -189,19 +189,26 @@ with sync_playwright() as p:
     settle(page)
     check(page.locator("text=Multi-Day Mission Analysis").count() == 0,
           "superseded MissionWindow section is gone (no duplicate analysis)")
-    markers = page.locator(".lunar-map__marker")
-    check(markers.count() == 4 and page.locator(".lunar-map__ref").count() == 4,
-          "map: 4 selectable validated sites, 4 reference-only markers")
-    check(page.locator(".lunar-map__ref").first.get_attribute("aria-hidden")
-          == "true", "reference markers are not interactive")
-    page.click(".lunar-map__marker[aria-label^='Peak near Shackleton']")
+    check(page.locator(".map-marker").count() == 4,
+          "desktop pole view: 4 separate selectable markers (no grouping needed)")
+    page.click("button.seg__btn:has-text('Region')")
+    check(page.locator(".map-ref").count() == 4
+          and page.locator(".map-ref").first.get_attribute("aria-hidden") == "true",
+          "region view: 4 reference-only markers, not interactive")
+    page.click("button.seg__btn:has-text('Pole')")
+    page.click(".map-marker[aria-label^='Peak near Shackleton']")
     settle(page)
     heads = page.evaluate("()=>[...document.querySelectorAll('.metrics-table thead th')].map(t=>t.innerText.trim())")
+    marker = page.locator(".map-marker[aria-label^='Peak near Shackleton']")
     check("site07" in page.url and "Peak near Shackleton" in heads
           and page.locator("#site-site07").is_checked()
-          and page.locator(".panorama").count() == 3,
-          "map selection updates URL, settings list, table and panoramas")
-    page.click(".lunar-map__marker[aria-label^='Peak near Shackleton']")
+          and page.locator(".panorama").count() == 3
+          and marker.get_attribute("aria-pressed") == "true"
+          and marker.inner_text().strip() == "✓",
+          "map selection updates URL, settings list, table, panoramas; ✓ not colour only")
+    check("Peak near Shackleton added" in page.inner_text("[role=status]"),
+          "selection change announced politely")
+    marker.click()
     settle(page)
     check("site07" not in page.url and not page.locator("#site-site07").is_checked(),
           "map deselection is synchronised")
@@ -252,6 +259,106 @@ with sync_playwright() as p:
             v = m.evaluate("async()=>(await axe.run()).violations.map(x=>x.id+':'+x.nodes.length)")
             check(v == [], f"{width}px axe violations: {v}")
         m.close()
+
+    print("Phone: horizon navigation, swipe, map chooser, time steps")
+    ph = b.new_page(viewport={"width": 390, "height": 844}, is_mobile=True,
+                    has_touch=True, device_scale_factor=2)
+    ph.goto(WEB + "/?sites=site04,site01,site07&start=2027-03-01&days=30"
+            "&height=2&model=terrain")
+    settle(ph)
+    fig = ph.locator(".panorama").first
+    rng = lambda: fig.locator(".pano-range").inner_text()
+    check("Showing" in rng() and "°–" in rng(), f"focused view shows its range: {rng()}")
+    for label, az in (("N", 0), ("E", 90), ("S", 180), ("W", 270)):
+        fig.locator(f".pano-nav__btn:text-is('{label}')").click()
+        btn = fig.locator(f".pano-nav__btn:text-is('{label}')")
+        check(f"centred on {az}°" in rng() and btn.get_attribute("aria-pressed") == "true",
+              f"{label} button faces {az}°")
+    check("facing west" in fig.locator("[aria-live=polite]").inner_text(),
+          "direction change announced")
+    view = fig.locator(".pano-view")
+    view.focus()
+    ph.keyboard.press("ArrowRight")
+    check("centred on 285°" in rng(), "ArrowRight rotates 15°")
+    ph.keyboard.press("Home")
+    check("centred on 0°" in rng(), "Home faces north")
+    check(fig.locator(".pano-view .readouts").count() == 0
+          and fig.locator(".readouts").count() == 1,
+          "site, time and readouts sit outside the gesture area")
+    # Real touch input through the Chrome DevTools Protocol.
+    cdp = ph.context.new_cdp_session(ph)
+    box = view.bounding_box()
+    cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+    def touch(points):
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchStart",
+                 "touchPoints": [{"x": points[0][0], "y": points[0][1]}]})
+        for x, y in points[1:]:
+            cdp.send("Input.dispatchTouchEvent", {"type": "touchMove",
+                     "touchPoints": [{"x": x, "y": y}]})
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        ph.wait_for_timeout(150)
+
+    before = rng()
+    touch([(cx + 80 - k * 16, cy) for k in range(11)])
+    check(rng() != before, f"horizontal swipe rotates the view ({rng()})")
+    before = rng()
+    touch([(cx, cy - 60 + k * 12) for k in range(11)])
+    check(rng() == before, "vertical swipe does not rotate the view")
+    view.scroll_into_view_if_needed()
+    box = view.bounding_box()  # re-measure: earlier steps may have scrolled
+    cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    y0 = ph.evaluate("()=>scrollY")
+    cdp.send("Input.synthesizeScrollGesture", {"x": cx, "y": cy,
+             "yDistance": -300, "gestureSourceType": "touch", "speed": 600})
+    ph.wait_for_timeout(900)  # the gesture itself lasts ~0.5 s
+    check(ph.evaluate("()=>scrollY") > y0 + 100,
+          "vertical touch scroll over the panorama scrolls the page")
+
+    grp = ph.locator(".map-group").first
+    check(grp.count() == 1, "overlapping markers form a group at 390 px")
+    grp.focus()
+    ph.keyboard.press("Enter")
+    focused = ph.evaluate("()=>document.activeElement.className")
+    check("map-chooser__opt" in focused and grp.get_attribute("aria-expanded") == "true",
+          "Enter opens the chooser and moves focus into it")
+    name = ph.evaluate("()=>document.activeElement.querySelector('.map-chooser__name').innerText")
+    was_on = ph.evaluate("()=>document.activeElement.getAttribute('aria-pressed')") == "true"
+    ph.keyboard.press("Enter")
+    settle(ph)
+    sid = {"Connecting Ridge": "site01", "Shackleton Rim": "site04"}[name]
+    now_on = sid in ph.url
+    check(now_on != was_on and ph.locator(f"#site-{sid}").is_checked() == now_on,
+          f"chooser toggles {name}; URL and settings list stay in sync")
+    ph.keyboard.press("Escape")
+    ph.wait_for_timeout(100)  # focus returns on the next animation frame
+    check(ph.locator("#map-chooser").count() == 0
+          and "map-group" in ph.evaluate("()=>document.activeElement.className"),
+          "Escape closes the chooser and returns focus to the group")
+    label0 = ph.inner_text("label[for=cursor]")
+    ph.click("button[aria-label='Forward one day']")
+    check(ph.inner_text("label[for=cursor]") != label0
+          and ph.locator("#cursor").input_value() == "24",
+          "time step buttons move the cursor by one day")
+    small = ph.evaluate("""()=>[...document.querySelectorAll(
+        '.pano-nav__btn,.cursor-steps button,.seg__btn,.map-chooser__opt,.disclosure>summary,.usa-button')]
+        .filter(e=>e.offsetParent && e.getBoundingClientRect().height<43.5).map(e=>e.innerText)""")
+    hit = ph.evaluate("""()=>[...document.querySelectorAll('.map-marker,.map-group')].map(e=>{
+        const r=e.getBoundingClientRect(), a=getComputedStyle(e,'::after'), i=-parseFloat(a.top);
+        return Math.min(r.width,r.height)+2*i})""")
+    check(not small and min(hit) >= 43.5,
+          f"touch targets ≥ 44 px (small: {small}; map hit areas {min(hit):.0f} px)")
+    ph.emulate_media(reduced_motion="reduce")
+    t = ph.evaluate("()=>getComputedStyle(document.querySelector('.seg__btn')).transitionDuration")
+    check(t in ("0s", ""), f"reduced motion disables transitions ({t})")
+    ph.add_script_tag(url=AXE)
+    v = ph.evaluate("async()=>(await axe.run()).violations.map(x=>x.id+':'+x.nodes.length)")
+    check(v == [], f"390px axe with panorama controls and map: {v}")
+    zoom = b.new_page(viewport={"width": 720, "height": 450}, device_scale_factor=2)
+    zoom.goto(WEB + "/?sites=site04,site01,site07")
+    settle(zoom)
+    check(zoom.evaluate("()=>document.documentElement.scrollWidth-innerWidth") <= 0,
+          "200% zoom (720 px CSS width): no page overflow")
     b.close()
 
 print("FAILURES:", len(failures))

@@ -112,3 +112,60 @@ test('consecutive windows share duration and stop at the API limit', () => {
   // API accepts start <= 2049-12-31 minus the window length.
   assert.deepEqual(windowStarts('2049-11-01', 30), ['2049-11-01', '2049-12-01'])
 })
+
+import {
+  delta,
+  inView,
+  rangeLabel,
+  relAz,
+  viewSpan,
+  windowStart,
+} from '../src/logic/panorama.ts'
+
+test('panorama window keeps true azimuth positions and wraps at north', () => {
+  // Centred on north with 180° span: window 270°..90°.
+  assert.equal(windowStart(0, 180), 270)
+  assert.equal(relAz(270, 270), 0)       // left edge
+  assert.equal(relAz(0, 270), 90)        // centre
+  assert.equal(relAz(90, 270), 180)      // right edge
+  assert.equal(inView(350, 0, 180), true)
+  assert.equal(inView(180, 0, 180), false)
+  assert.equal(inView(123, 0, 360), true)
+  assert.equal(delta(350, 10), 20)       // shortest rotation crosses north
+  assert.equal(delta(10, 350), -20)
+})
+
+test('panorama span stays readable and full on wide plots', () => {
+  assert.equal(viewSpan(320), 180)
+  assert.equal(viewSpan(200), 120)
+  assert.equal(viewSpan(100), 90)
+  assert.equal(viewSpan(700), 360)
+  assert.match(rangeLabel(0, 180), /^Showing 270°–90°, centred on 0° \(N\)$/)
+  assert.equal(rangeLabel(45, 360), 'Showing all 360°')
+})
+
+import { clusterByScreenDistance, polarKm } from '../src/logic/map.ts'
+
+test('map projection matches the validated LOLA convention', () => {
+  // Shackleton centre (USGS gazetteer) at 89.67°S 129.78°E lies ~10 km from
+  // the pole, east of 0° and toward 180° (screen right and down).
+  const p = polarKm(-89.67, 129.78)
+  assert.ok(Math.abs(Math.hypot(p.x, p.y) - 10.007) < 0.01)
+  assert.ok(p.x > 0 && p.y > 0)
+  const top = polarKm(-88, 0)
+  assert.ok(Math.abs(top.x) < 1e-9 && top.y < 0) // 0° longitude at the top
+})
+
+test('screen-space grouping never moves points', () => {
+  const pts = [
+    { item: 'a', x: 0, y: 0 }, { item: 'b', x: 5, y: 0 },
+    { item: 'c', x: 100, y: 0 },
+  ]
+  const before = JSON.stringify(pts)
+  // 1 km per px, 40 px threshold: a and b group, c alone.
+  const g = clusterByScreenDistance(pts, 1, 40)
+  assert.deepEqual(g.map(x => x.map(p => p.item)), [['a', 'b'], ['c']])
+  assert.equal(JSON.stringify(pts), before)
+  // Zoomed in (0.05 km per px): nothing groups.
+  assert.equal(clusterByScreenDistance(pts, 0.05, 40).length, 3)
+})

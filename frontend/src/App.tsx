@@ -102,7 +102,11 @@ function App() {
 
   function openWindow(next: string) {
     setStart(next)
-    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })
+    say(`Opened the window starting ${next} UTC.`)
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document
+      .getElementById('results')
+      ?.scrollIntoView({ behavior: still ? 'auto' : 'smooth' })
   }
 
   useEffect(() => {
@@ -183,16 +187,44 @@ function App() {
   const times = entries[0]?.data.times ?? []
   const terrain = mode === 'terrain'
 
+  // Polite announcements for deliberate selection changes only (never for
+  // slider movement or animation).
+  const [announcement, setAnnouncement] = useState('')
+  const say = (msg: string) => setAnnouncement(msg)
+  const siteName = (id: string) => catalog.find(c => c.id === id)?.name ?? id
+
   function toggleSite(id: string) {
-    setSelected(prev =>
-      prev.includes(id)
-        ? prev.length > 1
-          ? prev.filter(s => s !== id)
-          : prev
-        : prev.length < MAX_SITES
-          ? [...prev, id]
-          : prev
-    )
+    const name = siteName(id)
+    if (selected.includes(id)) {
+      if (selected.length === 1) {
+        say(`${name} is the only site selected; add another before removing it.`)
+        return
+      }
+      const n = selected.length - 1
+      say(`${name} removed. Comparing ${n} site${n === 1 ? '' : 's'}.`)
+      setSelected(prev => prev.filter(s => s !== id))
+    } else if (selected.length >= MAX_SITES) {
+      say(`Maximum ${MAX_SITES} sites. Remove one before adding ${name}.`)
+    } else {
+      say(`${name} added. Comparing ${selected.length + 1} sites.`)
+      setSelected(prev => (prev.includes(id) ? prev : [...prev, id]))
+    }
+  }
+  const changeStart = (v: string) => {
+    setStart(v)
+    say(`Window starts ${v} UTC.`)
+  }
+  const changeDays = (v: number) => {
+    setDays(v)
+    say(`Window length ${v} day${v === 1 ? '' : 's'}.`)
+  }
+  const changeHeight = (v: number) => {
+    setHeight(v)
+    say(`Observer height ${v} metres.`)
+  }
+  const changeMode = (v: Mode) => {
+    setMode(v)
+    say(v === 'terrain' ? 'Using the LOLA terrain horizon.' : 'Using the smooth-sphere horizon.')
   }
 
   return (
@@ -219,6 +251,9 @@ function App() {
       </header>
 
       <main id="main">
+      <p className="usa-sr-only" aria-live="polite" role="status">
+        {announcement}
+      </p>
       <section className="hero" aria-labelledby="page-title">
         <div className="container">
           <p className="eyebrow">Lunar south pole · mission planning</p>
@@ -257,13 +292,13 @@ function App() {
               selected={selected}
               onToggle={toggleSite}
               start={start}
-              onStart={setStart}
+              onStart={changeStart}
               days={days}
-              onDays={setDays}
+              onDays={changeDays}
               height={height}
-              onHeight={setHeight}
+              onHeight={changeHeight}
               mode={mode}
-              onMode={setMode}
+              onMode={changeMode}
             />
             {start === DEFAULT_START && (
               <p className="usa-hint example-note">
@@ -408,6 +443,24 @@ function App() {
                   value={cursor}
                   onChange={e => setCursor(Number(e.target.value))}
                 />
+                <div className="cursor-steps" role="group" aria-label="Step the time cursor">
+                  {[
+                    [-24, '−1 day', 'Back one day'],
+                    [-1, '−1 h', 'Back one hour'],
+                    [1, '+1 h', 'Forward one hour'],
+                    [24, '+1 day', 'Forward one day'],
+                  ].map(([d, label, name]) => {
+                    const stepN = Math.round((Number(d) * 60) / (entries[0]?.data.step_minutes ?? 60))
+                    const next = Math.min(times.length - 1, Math.max(0, cursor + stepN))
+                    return (
+                      <button key={String(label)} type="button" aria-label={String(name)}
+                        disabled={next === cursor}
+                        onClick={() => setCursor(next)}>
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               <section className="block">
