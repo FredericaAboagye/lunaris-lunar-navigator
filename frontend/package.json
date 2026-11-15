@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "nasawds": "^4.0.70",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-is": "^19.3.1",

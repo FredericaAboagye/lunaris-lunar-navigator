@@ -47,32 +47,25 @@ The long-term goal is to support informed decision-making through scientifically
 
 ### Completed
 
-- [x] Created the GitHub repository.
-- [x] Initialized the React + TypeScript frontend.
-- [x] Built the initial lunar mission-planning dashboard.
-- [x] Implemented landing-site and date selectors.
-- [x] Created a FastAPI backend.
-- [x] Integrated NASA JPL Horizons API requests.
-- [x] Successfully retrieved an initial Sun and Earth position response.
+- [x] FastAPI backend with a 7–30 day Sun/Earth analysis endpoint (NASA JPL Horizons, hourly, cached, retried).
+- [x] Interpolated illumination and communication metrics (Sun up %, Earth visible %, both, longest darkness/blackout, windows) with unit tests.
+- [x] Curated south-polar candidate sites; compare up to three at once.
+- [x] NASA Web Design System UI: KPI summary, comparison table, elevation charts, availability timeline, sky plots, time cursor, CSV export, shareable URLs.
 
-### In Progress
+### Next
 
-- [ ] Connect NASA data to the frontend.
-- [ ] Independently validate astronomical calculations.
-- [ ] Add verified lunar landing-site coordinates.
-- [ ] Implement side-by-side landing-site comparisons.
-- [ ] Visualize changes in Sun and Earth elevation over time.
-- [ ] Improve the user interface and visualizations.
-- [ ] Test the complete application.
-- [ ] Prepare the final NASA Space Apps submission.
+- [ ] Independently validate Horizons output (e.g. against SPICE/Skyfield).
+- [ ] Replace approximate site coordinates with LOLA-verified ones.
+- [ ] Terrain horizon masks from LOLA elevation data.
 
 ## 🛠️ Technology Stack
 
 | Component | Technology |
 |---|---|
 | Frontend | React, TypeScript, Vite |
-| Styling | CSS |
+| Styling | NASA Web Design System (`nasawds`) + CSS tokens |
 | Backend | Python, FastAPI |
+| Charts | Recharts, custom SVG |
 | HTTP Client | Requests |
 | Scientific Data | NASA JPL Horizons |
 | Version Control | Git and GitHub |
@@ -292,3 +285,15 @@ This repository is licensed under the MIT License. See [LICENSE](LICENSE).
 ---
 
 **Built by Team Pitzer Connect for the NASA Space Apps Challenge 2026.**
+
+## Run locally
+
+```bash
+cd backend && pip install -r requirements-dev.txt
+python -m pytest -q tests
+uvicorn main:app --reload          # http://127.0.0.1:8000/docs
+
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+Set `VITE_API_URL` for the frontend and `FRONTEND_ORIGIN` for the backend when deploying.
