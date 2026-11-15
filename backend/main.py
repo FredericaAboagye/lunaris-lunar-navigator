@@ -3,11 +3,14 @@ from datetime import date, timedelta
 from math import isfinite
 import csv
 import requests
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Lunaris NASA Data API")
+
+import os
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,6 +19,10 @@ app.add_middleware(
         "http://localhost:5174",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+    ] + [
+        origin.strip()
+        for origin in os.getenv("FRONTEND_ORIGIN", "").split(",")
+        if origin.strip()
     ],
     allow_methods=["GET"],
     allow_headers=["*"],
