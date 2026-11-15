@@ -74,6 +74,15 @@ function Accordion({
 }
 
 function App() {
+
+  const [darkMode, setDarkMode] = useState(
+    () => localStorage.getItem('lunaris-theme') === 'dark'
+  )
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
+    localStorage.setItem('lunaris-theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
   const initial = useMemo(readUrl, [])
   const [catalog, setCatalog] = useState<Site[]>([])
   const [unsupported, setUnsupported] = useState<Record<string, string>>({})
@@ -229,9 +238,9 @@ function App() {
 
   return (
     <div className="app">
-      <header className="usa-header usa-header--basic usa-header--dark topbar">
+      <header className="topbar">
         <div className="container topbar__inner">
-          <div className="usa-logo">
+          <div className="topbar__brand">
             <a href="/" className="brand" aria-label="Lunaris home">
               <svg viewBox="0 0 24 24" width="26" height="26"
                 aria-hidden="true">
@@ -244,10 +253,21 @@ function App() {
               <small>Lunar Landing Site Navigator</small>
             </a>
           </div>
-          <span className="topbar__tag">
-            NASA Space Apps Challenge 2026
-          </span>
-        </div>
+      </div>
+          <div className="topbar__actions">
+            <span className="topbar__tag">
+              NASA Space Apps Challenge 2026
+            </span>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setDarkMode(!darkMode)}
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-pressed={darkMode}
+              >
+              {darkMode ? '☀️ Light mode' : '🌙 Dark mode'}
+            </button>
+          </div>
       </header>
 
       <main id="main">
@@ -258,7 +278,7 @@ function App() {
         <div className="container">
           <p className="eyebrow">Lunar south pole · mission planning</p>
           <h1 id="page-title">
-            Sunlight and Earth view at lunar south-pole sites
+            ☀️ Sunlight and 🌍 Earth view at lunar south-pole sites
           </h1>
           <p className="lead">
             Compare candidate sites and dates using NASA JPL Horizons

@@ -1236,3 +1236,206 @@ body {
     animation: none !important;
   }
 }
+
+
+/* Lunaris UI polish — light/dark theme */
+
+:root[data-theme="dark"] {
+  --background: 222 35% 10%;
+  --foreground: 210 25% 94%;
+  --card: 222 28% 15%;
+  --muted: 222 24% 20%;
+  --muted-foreground: 215 18% 76%;
+  --border: 218 18% 34%;
+  --primary: 210 85% 65%;
+  --accent-text: 12 100% 72%;
+  --good: 155 65% 63%;
+  --ring: 210 90% 72%;
+  color-scheme: dark;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.theme-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+
+[data-theme="dark"] .usa-card__container,
+[data-theme="dark"] .usa-accordion__content,
+[data-theme="dark"] .usa-table,
+[data-theme="dark"] .settings,
+[data-theme="dark"] .block,
+[data-theme="dark"] .disclosure {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+[data-theme="dark"] .usa-table th,
+[data-theme="dark"] .usa-table td {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+@media (max-width: 40em) {
+  .topbar__actions {
+    gap: 0.5rem;
+  }
+
+  .theme-toggle {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
+  }
+}
+
+
+/* Header layout correction */
+
+.topbar .topbar__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  min-height: 4.5rem;
+}
+
+.topbar__brand {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.topbar .theme-toggle {
+  flex-shrink: 0;
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .topbar .topbar__inner {
+    gap: 0.5rem;
+  }
+
+  .topbar__actions {
+    gap: 0.5rem;
+  }
+
+  .topbar__tag,
+  .brand small {
+    display: none;
+  }
+}
+
+
+/* Dark mode contrast fixes for NASA Web Design System */
+
+:root[data-theme="dark"] {
+  --background: 222 35% 10%;
+  --foreground: 210 25% 94%;
+  --card: 222 28% 15%;
+  --muted: 222 24% 20%;
+  --muted-foreground: 215 18% 76%;
+  --border: 218 18% 34%;
+  --primary: 210 85% 65%;
+  --accent-text: 12 100% 72%;
+  --good: 155 65% 63%;
+  --ring: 210 90% 72%;
+  color-scheme: dark;
+}
+
+/* Tables: fix white cells and invisible text */
+[data-theme="dark"] .usa-table,
+[data-theme="dark"] .usa-table thead,
+[data-theme="dark"] .usa-table tbody,
+[data-theme="dark"] .usa-table tr,
+[data-theme="dark"] .usa-table th,
+[data-theme="dark"] .usa-table td {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+[data-theme="dark"] .usa-table thead th,
+[data-theme="dark"] .group-row th,
+[data-theme="dark"] .window-table tr.is-current th,
+[data-theme="dark"] .window-table tr.is-current td {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Inputs and unchecked site selections */
+[data-theme="dark"] .usa-input,
+[data-theme="dark"] .usa-select,
+[data-theme="dark"] .usa-textarea,
+[data-theme="dark"] .controls .usa-checkbox__label {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+[data-theme="dark"] .usa-checkbox__label-description,
+[data-theme="dark"] .usa-hint {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Buttons and accordion panels */
+[data-theme="dark"] .usa-accordion__button,
+[data-theme="dark"] .usa-accordion__content {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+
+[data-theme="dark"] .usa-button--outline {
+  color: hsl(var(--primary));
+  box-shadow: inset 0 0 0 2px hsl(var(--primary));
+}
+
+/* Make disabled controls identifiable */
+[data-theme="dark"] button:disabled {
+  opacity: 0.55;
+}
+
+/* Keep dark mode form controls readable */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color-scheme: dark;
+}
+
