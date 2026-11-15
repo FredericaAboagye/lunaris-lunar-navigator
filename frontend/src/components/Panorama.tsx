@@ -3,8 +3,8 @@ import { explainVisibility, type Explanation } from '../logic/visibility'
 import type { Entry, Mode } from './types'
 
 const W = 720
-const H = 220
-const PAD = { l: 34, r: 8, t: 10, b: 22 }
+const H = 240
+const PAD = { l: 48, r: 10, t: 12, b: 30 }
 const SUN = '#d9a400'
 const EARTH = '#1a5f9e'
 const SUN_R = 0.2666
@@ -133,9 +133,8 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
           aria-hidden="true"
         />
         {site.name}
-        <span className="muted">
-          {' '}
-          · observer {data.height_m} m above the ground
+        <span className="panorama__meta">
+          Observer {data.height_m} m above ground
         </span>
       </figcaption>
       <div
@@ -153,13 +152,13 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
             <g key={v}>
               <line x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)}
                 stroke={v === 0 ? '#a9aeb1' : '#eef0f1'} />
-              <text x={PAD.l - 4} y={y(v) + 3} textAnchor="end"
-                fontSize="10" fill="#565c65">{v}°</text>
+              <text x={PAD.l - 6} y={y(v) + 4} textAnchor="end"
+                fontSize="15" fill="#3d4551">{v}°</text>
             </g>
           ))}
           {['N', 'E', 'S', 'W', 'N'].map((l, k) => (
-            <text key={k} x={x(k * 90)} y={H - 6} textAnchor="middle"
-              fontSize="11" fill="#565c65">{l}</text>
+            <text key={k} x={x(k * 90)} y={H - 8} textAnchor="middle"
+              fontSize="16" fontWeight="600" fill="#3d4551">{l}</text>
           ))}
           <path d={track(data.sun.azimuth_deg, data.sun.elevation_deg)}
             fill="none" stroke={SUN} strokeOpacity="0.5" strokeWidth="1.5" />
@@ -182,9 +181,8 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
         Swipe sideways to see all 360°.
       </p>
       <p className="panorama__scale">
-        Vertical scale stretched about {Math.round(stretch)}× relative to the
-        azimuth axis, so low hills look steep. Discs are drawn at the
-        vertical scale (minimum size for legibility).
+        Vertical axis stretched ≈{Math.round(stretch)}× vs azimuth; low
+        hills look steep. Discs use the vertical scale.
       </p>
       <div className="readouts">
         <Readout body="Sun" dot="dot--sun" elevation={sunEl}

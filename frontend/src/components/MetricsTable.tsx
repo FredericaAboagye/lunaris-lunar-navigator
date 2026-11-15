@@ -1,7 +1,7 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Metrics } from '../api'
 import { fmtDeg, fmtHours } from '../lib'
 import { rank } from '../logic/compare'
-import { EARTH_CAVEAT, SUN_CAVEAT } from '../logic/copy'
 import type { Entry, Mode } from './types'
 
 type Row = {
@@ -23,25 +23,25 @@ const metric =
 const GROUPS: Group[] = [
   {
     title: 'Sunlight',
-    caveat: SUN_CAVEAT,
+    caveat: 'Visibility, not electrical power',
     rows: [
       {
-        label: 'Sun visible',
-        hint: 'Share of time the Sun’s centre is above the horizon',
+        label: 'Sun visible (centre)',
+        hint: 'Share of time the Sun’s centre is up',
         better: 'high',
         value: metric('sun_up_pct'),
         format: pct,
       },
       {
-        label: 'Mean solar disk visible',
-        hint: 'Average fraction of the Sun’s disk above the horizon',
+        label: 'Mean solar disk',
+        hint: 'Average visible fraction of the disk',
         better: 'high',
         value: metric('mean_sun_disk_pct'),
         format: pct,
       },
       {
-        label: 'Mean solar disk, ignoring ground within 200 m',
-        hint: 'Nearby-terrain sensitivity — a what-if, not an uncertainty interval',
+        label: 'Disk, ignoring ground < 200 m',
+        hint: 'Sensitivity what-if, not an error bar',
         better: null,
         value: e => e.data.metrics.terrain_far_field.mean_sun_disk_pct,
         format: pct,
@@ -49,14 +49,14 @@ const GROUPS: Group[] = [
       },
       {
         label: 'Longest darkness',
-        hint: 'Longest continuous time with the Sun below the horizon',
+        hint: 'Longest stretch with the Sun down',
         better: 'low',
         value: metric('longest_darkness_hours'),
         format: fmtHours,
       },
       {
-        label: 'Highest Sun elevation above the reference horizontal (0°)',
-        hint: 'Geometry only, identical in both horizon models — not clearance above terrain',
+        label: 'Peak Sun elevation',
+        hint: 'Relative to 0°, not terrain clearance',
         better: null,
         value: e => e.data.metrics.geometric.max_sun_elevation_deg ?? null,
         format: v => fmtDeg(v),
@@ -65,18 +65,18 @@ const GROUPS: Group[] = [
   },
   {
     title: 'Earth contact',
-    caveat: EARTH_CAVEAT,
+    caveat: 'Line of sight, not a guaranteed radio link',
     rows: [
       {
         label: 'Earth visible',
-        hint: 'Share of time Earth’s centre is above the horizon',
+        hint: 'Share of time Earth’s centre is up',
         better: 'high',
         value: metric('earth_visible_pct'),
         format: pct,
       },
       {
         label: 'Longest Earth outage',
-        hint: 'Longest continuous time with Earth below the horizon',
+        hint: 'Longest stretch with Earth down',
         better: 'low',
         value: metric('longest_comms_blackout_hours'),
         format: fmtHours,
@@ -85,11 +85,11 @@ const GROUPS: Group[] = [
   },
   {
     title: 'Sun and Earth together',
-    caveat: 'Both centres above the horizon at the same time.',
+    caveat: 'Both centres up at once',
     rows: [
       {
-        label: 'Sun and Earth together',
-        hint: 'Share of time both are visible',
+        label: 'Sun + Earth together',
+        hint: 'Share of time both are up',
         better: 'high',
         value: metric('both_pct'),
         format: pct,
@@ -106,11 +106,25 @@ export default function MetricsTable({
   mode: Mode
 }) {
   const cols = entries.length + 1
+  // Show the swipe hint only when the table really overflows its region.
+  const scroller = useRef<HTMLDivElement>(null)
+  const [overflows, setOverflows] = useState(false)
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const measure = () => setOverflows(el.scrollWidth > el.clientWidth + 1)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [entries.length])
   return (
+    <>
     <div
-      className="table-scroll"
+      ref={scroller}
+      className="table-scroll table-scroll--compare"
       role="region"
-      aria-label="Site comparison table"
+      aria-label="Site comparison table; scroll sideways on small screens"
       tabIndex={0}
     >
       <table className="usa-table usa-table--borderless metrics-table">
@@ -122,13 +136,15 @@ export default function MetricsTable({
           <tr>
             <th scope="col">Metric</th>
             {entries.map(e => (
-              <th scope="col" key={e.site.id}>
-                <span
-                  className="swatch"
-                  style={{ background: e.color }}
-                  aria-hidden="true"
-                />
-                {e.site.name}
+              <th scope="col" key={e.site.id} className="site-col">
+                <span className="site-head">
+                  <span
+                    className="swatch"
+                    style={{ background: e.color }}
+                    aria-hidden="true"
+                  />
+                  <span>{e.site.name}</span>
+                </span>
               </th>
             ))}
           </tr>
@@ -165,7 +181,7 @@ export default function MetricsTable({
                       return (
                         <td
                           key={e.site.id}
-                          className={best ? 'is-best' : undefined}
+                          className={`num${best ? ' is-best' : ''}`}
                         >
                           {v === null ? '—' : row.format(v)}
                           {best && (
@@ -186,5 +202,11 @@ export default function MetricsTable({
         ))}
       </table>
     </div>
+    {overflows && (
+      <p className="scroll-hint" aria-hidden="true">
+        Swipe sideways to compare all sites →
+      </p>
+    )}
+    </>
   )
 }

@@ -25,31 +25,35 @@ function Segmented<T extends string | number>({
 }: {
   legend: string
   hint?: string
-  options: { value: T; label: string }[]
+  options: { value: T; label: string; title?: string }[]
   value: T
   onChange: (v: T) => void
 }) {
+  // Equal-width grid: every segment gets the same share and may shrink
+  // (min-width: 0), so labels never spill into neighbouring segments.
   return (
     <fieldset className="usa-fieldset">
       <legend className="usa-legend">{legend}</legend>
-      {hint && <span className="usa-hint">{hint}</span>}
-      <ul className="usa-button-group usa-button-group--segmented">
+      {hint && <span className="usa-hint seg-hint">{hint}</span>}
+      <div
+        className="seg"
+        role="group"
+        aria-label={legend}
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      >
         {options.map(o => (
-          <li className="usa-button-group__item" key={String(o.value)}>
-            <button
-              type="button"
-              className={
-                'usa-button' +
-                (o.value === value ? '' : ' usa-button--outline')
-              }
-              aria-pressed={o.value === value}
-              onClick={() => onChange(o.value)}
-            >
-              {o.label}
-            </button>
-          </li>
+          <button
+            key={String(o.value)}
+            type="button"
+            className="seg__btn"
+            aria-pressed={o.value === value}
+            title={o.title}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </button>
         ))}
-      </ul>
+      </div>
     </fieldset>
   )
 }
@@ -65,9 +69,9 @@ export default function Controls(p: Props) {
     >
       <fieldset className="usa-fieldset">
         <legend className="usa-legend">
-          Candidate sites{' '}
+          Sites{' '}
           <span className="muted">
-            ({p.selected.length}/{MAX_SITES})
+            ({p.selected.length}/{MAX_SITES}, terrain-validated)
           </span>
         </legend>
         {p.sites.map(site => {
@@ -98,7 +102,7 @@ export default function Controls(p: Props) {
                   {site.name}
                 </span>
                 <span className="usa-checkbox__label-description">
-                  Terrain validated · {Math.abs(site.latitude).toFixed(2)}°S
+                  {Math.abs(site.latitude).toFixed(2)}°S
                 </span>
               </label>
             </div>
@@ -135,14 +139,18 @@ export default function Controls(p: Props) {
 
       <Segmented
         legend="Window length"
-        options={DURATIONS.map(d => ({ value: d.days, label: d.label }))}
+        options={DURATIONS.map(d => ({
+          value: d.days,
+          label: d.label,
+          title: `${d.days} day${d.days === 1 ? '' : 's'}`,
+        }))}
         value={p.days}
         onChange={p.onDays}
       />
 
       <Segmented
         legend="Observer height"
-        hint="Height of the solar panel or antenna above the ground"
+        hint="Panel or antenna height above ground"
         options={HEIGHTS.map(h => ({ value: h, label: `${h} m` }))}
         value={p.height}
         onChange={p.onHeight}
@@ -150,8 +158,9 @@ export default function Controls(p: Props) {
 
       <Segmented<Mode>
         legend="Horizon model"
+        hint="Terrain uses LRO LOLA elevation; smooth sphere ignores it"
         options={[
-          { value: 'terrain', label: 'LOLA terrain' },
+          { value: 'terrain', label: 'Terrain' },
           { value: 'geometric', label: 'Smooth sphere' },
         ]}
         value={p.mode}

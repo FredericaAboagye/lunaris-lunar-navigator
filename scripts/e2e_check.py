@@ -92,8 +92,8 @@ def first_label(text):
     return text
 
 
-LABELS = ["Sun visible", "Mean solar disk visible", "Longest darkness",
-          "Earth visible", "Longest Earth outage", "Sun and Earth together"]
+LABELS = ["Sun visible (centre)", "Mean solar disk", "Longest darkness",
+          "Earth visible", "Longest Earth outage", "Sun + Earth together"]
 KEYS = ["sun_up_pct", "mean_sun_disk_pct", "longest_darkness_hours",
         "earth_visible_pct", "longest_comms_blackout_hours", "both_pct"]
 
@@ -166,6 +166,6 @@ c = strip.sub("", dom(url, "America/Los_Angeles"))
 check(a == b == c and "UTC" in a, "rendered page identical in UTC, Tokyo, LA")
 g = dom(url.replace("model=terrain", "model=geometric"))
 check("Smooth-sphere mode ignores terrain" in g, "smooth-sphere warning shown")
-check("not an error bar" in a, "sensitivity caveat beside headline sunlight")
+check("(sensitivity)" in a, "sensitivity caveat beside headline sunlight")
 print("FAILURES:", len(failures))
 sys.exit(1 if failures else 0)

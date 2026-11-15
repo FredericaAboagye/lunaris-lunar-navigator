@@ -73,13 +73,14 @@ with sync_playwright() as p:
           and "not today" in page.inner_text(".example-note"),
           "example window labelled as an example, not today/optimized")
     trade = page.inner_text(".tradeoff")
-    check("Tradeoff in this window" in trade and "best" not in trade.lower(),
-          f"tradeoff sentence, no 'best': {trade!r}")
-    for text in ("Sun visibility is not electrical power",
-                 "Earth visibility does not guarantee a radio link",
-                 "Nearby-terrain sensitivity"):
-        loc = page.locator(".kpi", has_text=text).first
-        check(loc.is_visible(), f"visible beside headline metrics: {text}")
+    check(trade.startswith("Tradeoff:") and "best" not in trade.lower(),
+          f"short tradeoff line, no 'best': {trade!r}")
+    for text in ("Sun visible ≠ electrical power",
+                 "Earth visible ≠ guaranteed radio link"):
+        check(page.locator(".caveat-line", has_text=text).is_visible(),
+              f"visible beside headline metrics: {text}")
+    check(page.locator(".kpi", has_text="(sensitivity)").first.is_visible(),
+          "nearby-terrain sensitivity beside headline sunlight")
     check(page.locator(".group-row", has_text="not electrical power").is_visible()
           and page.locator(".group-row", has_text="radio link").is_visible(),
           "caveats beside the table's Sunlight and Earth groups")
@@ -87,10 +88,10 @@ with sync_playwright() as p:
     print("Winners and direction (Mar 2027, from API)")
     a4 = api("/api/analysis?site=site04&start=2027-03-01&days=30&height=2")
     a1 = api("/api/analysis?site=site01&start=2027-03-01&days=30&height=2")
-    sun = cells(page, "Mean solar disk visible")
+    sun = cells(page, "Mean solar disk")
     dark = cells(page, "Longest darkness")
     out = cells(page, "Longest Earth outage")
-    both = cells(page, "Sun and Earth together")
+    both = cells(page, "Sun + Earth together")
     m4, m1 = a4["metrics"]["terrain"], a1["metrics"]["terrain"]
     check(sun[1]["best"] == (m1["mean_sun_disk_pct"] > m4["mean_sun_disk_pct"])
           and not sun[0]["best"], "more sunlight wins (higher is better)")
@@ -101,19 +102,21 @@ with sync_playwright() as p:
           < m4["longest_comms_blackout_hours"], "shorter Earth outage wins")
     check(both[0]["best"] and m4["both_pct"] > m1["both_pct"],
           "Shackleton Rim leads Sun+Earth together (tradeoff)")
-    check("Shackleton Rim on Sun and Earth together" in trade,
-          "tradeoff sentence names the overlap leader")
+    both_card = page.locator(".kpi", has_text="Sun + Earth together").inner_text()
+    check("Shackleton Rim" in both_card and "Connecting Ridge" not in both_card,
+          "overlap card names the overlap leader")
 
     print("Ties (Nov 2026: both 100% sunlight)")
     page.goto(WEB + "/?sites=site04,site01&start=2026-11-14&days=30"
           "&height=2&model=terrain")
     settle(page)
-    sun = cells(page, "Mean solar disk visible")
+    sun = cells(page, "Mean solar disk")
     check(all(c["tie"] and not c["best"] for c in sun),
           "equal sunlight shows 'tie', no winner highlighted")
     kpi = page.locator(".kpi").first.inner_text()
-    check("All selected sites tie on the most sunlight" in kpi,
-          "summary states the sunlight tie")
+    check("Tie" in kpi and "Same at both sites" in kpi
+          and "Shackleton Rim" not in kpi and "Connecting Ridge" not in kpi,
+          "summary states the sunlight tie without naming a winner")
     out = cells(page, "Longest Earth outage")
     check(out[1]["best"] and not out[0]["best"],
           "a clear winner still shown where values differ")
@@ -139,7 +142,7 @@ with sync_playwright() as p:
     page.locator(".open-window").first.click()
     settle(page)
     check("start=2027-03-31" in page.url, "Open in main view updates the URL")
-    s1 = cells(page, "Mean solar disk visible")[1]["text"]
+    s1 = cells(page, "Mean solar disk")[1]["text"]
     check(s1 == f"{second['metrics']['terrain']['mean_sun_disk_pct']:.1f}%",
           "main view shows the opened window's API values")
 
@@ -169,13 +172,14 @@ with sync_playwright() as p:
     st, why = readout(page, 0, "Earth")
     check(st == "Hidden by terrain" and "even though" not in why,
           "hidden below 0° is still attributed to the terrain horizon")
-    page.click("text=Smooth sphere")
+    page.click("button.seg__btn:has-text('Smooth sphere')")
     set_cursor(page, below_vis)
     st, _ = readout(page, 0, "Sun")
     check(st == "Below reference horizon",
           "smooth-sphere mode: same instant is below the reference horizon")
     label = page.locator(".panorama__scale").first.inner_text()
-    check("stretched about" in label, f"vertical exaggeration labelled: {label[:48]}…")
+    check("stretched" in label and "×" in label,
+          f"vertical exaggeration labelled: {label[:48]}…")
     check(page.locator("text=Exact window times (UTC)").is_visible(),
           "exact window times visible without opening anything")
 
@@ -206,7 +210,7 @@ with sync_playwright() as p:
         settle(page)
         sub = page.locator("#results .block p.muted").first.inner_text()
         api_d = api(f"/api/analysis?site=site04&start=2027-03-01&days={d}&height=2")
-        sun = cells(page, "Sun visible")[0]["text"]
+        sun = cells(page, "Sun visible (centre)")[0]["text"]
         check(f"days={d}" in page.url
               and sun == f"{api_d['metrics']['terrain']['sun_up_pct']:.1f}%"
               and (f"{d} day from" if d == 1 else f"{d} days from") in sub,
@@ -222,16 +226,20 @@ with sync_playwright() as p:
     check(outline not in ("none", ""), f"visible focus on slider ({outline})")
 
     print("Mobile and tablet widths")
-    for width in (360, 390, 768):
+    for width in (360, 390, 768, 1024, 1440):
         m = b.new_page(viewport={"width": width, "height": 844},
                        is_mobile=width < 700, device_scale_factor=2)
         m.goto(WEB + "/")
         settle(m)
         over = m.evaluate("()=>document.documentElement.scrollWidth-innerWidth")
         clipped = m.evaluate("""()=>[...document.querySelectorAll(
-            '.readout,.readout__reason,.panorama figcaption,.kpi,.tradeoff,.cursor-bar')]
+            '.readout,.readout__reason,.panorama figcaption,.kpi,.tradeoff,.cursor-bar,.seg__btn,.usa-button,.site-head,.caveat-line')]
             .filter(el=>{const r=el.getBoundingClientRect();
-              return r.left<0||r.right>innerWidth+0.5||el.scrollWidth>el.clientWidth+1})
+              // Content inside a declared, labelled scroll region may extend
+              // past the viewport by design; that is not clipping.
+              const inScroller=el.closest('.table-scroll,.panorama__scroll');
+              return (!inScroller && (r.left<0||r.right>innerWidth+0.5))
+                     ||el.scrollWidth>el.clientWidth+1})
             .map(el=>el.className).slice(0,5)""")
         check(over <= 0 and not clipped,
               f"{width}px: page overflow {over}px, clipped {clipped}")

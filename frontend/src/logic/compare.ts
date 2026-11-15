@@ -93,3 +93,35 @@ export function tradeoffSentence(
   const parts = decided.map(l => `${joinNames(l.names)} on ${l.priority}`)
   return `Tradeoff in this window: ${joinNames(parts)}. Which matters more depends on your mission priority.`
 }
+
+/**
+ * Margin of the leader over the best non-leader, at displayed precision.
+ * Returns null on an all-way tie or with fewer than two sites.
+ */
+export function marginOverNext<T>(
+  items: T[],
+  value: (item: T) => number,
+  format: (v: number) => string,
+  direction: Direction
+): number | null {
+  const r = rank(items, value, format, direction)
+  if (items.length < 2 || r.allTied) return null
+  const lead = value(r.winners[0])
+  const rest = items.filter(i => !r.winners.includes(i)).map(value)
+  const next = direction === 'high' ? Math.max(...rest) : Math.min(...rest)
+  return Math.abs(lead - next)
+}
+
+/** One short line: who leads where, never an overall "best". */
+export function tradeoffHeadline(
+  leaders: { names: string[]; allTied: boolean }[]
+): string {
+  const decided = leaders.filter(l => !l.allTied && l.names.length > 0)
+  if (decided.length === 0) return 'No measure separates these sites in this window.'
+  const keys = new Set(decided.map(l => l.names.slice().sort().join('|')))
+  if (keys.size === 1) {
+    const who = joinNames(decided[0].names)
+    return `${who} ${decided[0].names.length > 1 ? 'lead' : 'leads'} on every measure that differs in this window — check other dates.`
+  }
+  return 'Tradeoff: different sites lead on different measures in this window.'
+}

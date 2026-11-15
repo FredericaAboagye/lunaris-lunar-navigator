@@ -223,12 +223,11 @@ function App() {
         <div className="container">
           <p className="eyebrow">Lunar south pole · mission planning</p>
           <h1 id="page-title">
-            See when each site has sunlight and a view of Earth.
+            Sunlight and Earth view at lunar south-pole sites
           </h1>
           <p className="lead">
-            Compare documented candidate sites near the lunar south pole:
-            Sun and Earth positions from NASA JPL Horizons, checked against
-            the terrain horizon from LRO laser altimetry.
+            Compare candidate sites and dates using NASA JPL Horizons
+            positions and LRO terrain horizons.
           </p>
         </div>
       </section>
@@ -268,9 +267,8 @@ function App() {
             />
             {start === DEFAULT_START && (
               <p className="usa-hint example-note">
-                Opens with an example window (1 Mar 2027 UTC) that shows a
-                tradeoff. It is not today’s date or an optimized landing
-                window.
+                Example window (1 Mar 2027 UTC) chosen to show a tradeoff —
+                not today’s date or an optimized landing window.
               </p>
             )}
             <button
@@ -324,7 +322,7 @@ function App() {
 
               <section className="block">
                 <h2>Site comparison</h2>
-                <p className="muted">
+                <p className="muted section-sub">
                   {start === DEFAULT_START ? 'Example window: ' : ''}
                   {entries[0].data.days} day
                   {entries[0].data.days === 1 ? '' : 's'} from{' '}
@@ -333,7 +331,7 @@ function App() {
                   {terrain
                     ? 'LOLA terrain horizon'
                     : 'smooth-sphere horizon (0°)'}{' '}
-                  · best value per row highlighted; equal values are ties
+                  · best in row highlighted, equal values tie
                 </p>
                 {!terrain && (
                   <div className="usa-alert usa-alert--warning usa-alert--slim">
@@ -347,22 +345,45 @@ function App() {
                   </div>
                 )}
                 <MetricsTable entries={entries} mode={mode} />
-                <ul className="site-notes">
-                  {entries.map(e => (
-                    <li key={e.site.id}>
-                      <span
-                        className="swatch"
-                        style={{ background: e.color }}
-                        aria-hidden="true"
-                      />
-                      <strong>{e.site.name}</strong>{' '}
-                      <span className="muted">
-                        {fmtLat(e.site)} — {e.site.region}. Point:{' '}
-                        {e.site.point_source}.
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <details className="disclosure">
+                  <summary>Site details: coordinates and sources</summary>
+                  <div
+                    className="table-scroll"
+                    role="region"
+                    aria-label="Site details"
+                    tabIndex={0}
+                  >
+                    <table className="usa-table usa-table--borderless details-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Site</th>
+                          <th scope="col">Coordinates</th>
+                          <th scope="col">Region</th>
+                          <th scope="col">Point source</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map(e => (
+                          <tr key={e.site.id}>
+                            <th scope="row">
+                              <span className="site-head">
+                                <span
+                                  className="swatch"
+                                  style={{ background: e.color }}
+                                  aria-hidden="true"
+                                />
+                                <span>{e.site.name}</span>
+                              </span>
+                            </th>
+                            <td>{fmtLat(e.site)}</td>
+                            <td>{e.site.region}</td>
+                            <td>{e.site.point_source}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
               </section>
 
               <LunarMap
@@ -391,14 +412,16 @@ function App() {
 
               <section className="block">
                 <h2>Horizon view</h2>
-                <p className="muted">
-                  Looking all the way around from each site. The dark
-                  shape is the {terrain ? 'terrain horizon' : 'flat horizon'};
-                  lines trace the Sun and Earth over the whole window; discs
-                  show them at the cursor time, drawn to scale.
-                  {terrain &&
-                    ' The dashed white line ignores ground within 200 m.'}
+                <p className="muted section-sub">
+                  A 360° view from each site at the cursor time.
                 </p>
+                <ul className="legend-row legend-row--horizon" aria-label="Horizon view legend">
+                  <li><i className="lg lg--terrain" />{terrain ? 'Terrain horizon' : 'Flat horizon (0°)'}</li>
+                  {terrain && <li><i className="lg lg--far" />Ignoring ground &lt; 200 m</li>}
+                  <li><i className="lg lg--sun" />Sun path</li>
+                  <li><i className="lg lg--earth" />Earth path</li>
+                  <li><i className="lg lg--hidden" />Hidden (dashed disc)</li>
+                </ul>
                 <div className="panorama-grid">
                   {entries.map(e => (
                     <Panorama
@@ -413,11 +436,10 @@ function App() {
 
               <section className="block">
                 <h2>Elevation over time</h2>
-                <p className="muted">
-                  Solid lines are the body’s elevation.{' '}
+                <p className="muted section-sub">
                   {terrain
-                    ? 'Dashed lines in the same colour are the terrain horizon in that direction — the body is visible while the solid line is above its dashed line.'
-                    : 'The body is visible while its line is above 0°.'}
+                    ? 'Solid: elevation. Dashed, same colour: terrain horizon in that direction. Visible while solid is above dashed.'
+                    : 'Visible while the line is above 0°.'}
                 </p>
                 <h3>Sun</h3>
                 <ElevationChart entries={entries} body="sun"
