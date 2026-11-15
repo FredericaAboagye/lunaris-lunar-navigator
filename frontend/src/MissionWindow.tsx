@@ -250,6 +250,124 @@ function MissionGraph({
   )
 }
 
+
+function calculateSimultaneousVisibility(
+  data: MissionData
+) {
+  const sun = data.sun.observations
+  const earth = data.earth.observations
+
+  let simultaneous = 0
+
+  for (let i = 0; i < sun.length; i++) {
+    if (
+      sun[i].time_utc !== earth[i]?.time_utc
+    ) {
+      throw new Error('Sun and Earth timestamps differ')
+    }
+
+    if (
+      sun[i].above_geometric_horizon &&
+      earth[i].above_geometric_horizon
+    ) {
+      simultaneous++
+    }
+  }
+
+  return {
+    count: simultaneous,
+    total: sun.length,
+    percentage: sun.length
+      ? Number((simultaneous / sun.length * 100).toFixed(1))
+      : 0,
+  }
+}
+
+ 
+function MissionInsights({
+  dataA,
+  dataB,
+  nameA,
+  nameB,
+}: {
+  dataA: MissionData
+  dataB: MissionData
+  nameA: string
+  nameB: string
+}) {
+  const simultaneousA =
+    calculateSimultaneousVisibility(dataA)
+
+  const simultaneousB =
+    calculateSimultaneousVisibility(dataB)
+
+  const sunA =
+    dataA.sun.summary.percent_samples_above_horizon
+  const sunB =
+    dataB.sun.summary.percent_samples_above_horizon
+
+  const earthA =
+    dataA.earth.summary.percent_samples_above_horizon
+  const earthB =
+    dataB.earth.summary.percent_samples_above_horizon
+
+  function compare(
+    a: number,
+    b: number,
+    category: string
+  ) {
+    if (a === b) {
+      return `Both locations have equal sampled ${category}.`
+    }
+
+    const winner = a > b ? nameA : nameB
+
+    return `${winner} has greater sampled ${category}.`
+  }
+
+  return (
+    <div className="panel mission-insights">
+      <h2>Mission Tradeoff Analysis</h2>
+
+      <p className="muted">
+        Comparing geometric visibility across the
+        selected mission period.
+      </p>
+
+      <div className="metric">
+        <span>Simultaneous visibility — {nameA}</span>
+        <strong>{simultaneousA.percentage}%</strong>
+      </div>
+
+      <div className="metric">
+        <span>Simultaneous visibility — {nameB}</span>
+        <strong>{simultaneousB.percentage}%</strong>
+      </div>
+
+      <div className="notice">
+        <h3>Mission Insights</h3>
+
+        <p>{compare(sunA, sunB, 'Sun visibility')}</p>
+        <p>{compare(earthA, earthB, 'Earth visibility')}</p>
+        <p>
+          {compare(
+            simultaneousA.percentage,
+            simultaneousB.percentage,
+            'simultaneous Sun and Earth visibility'
+          )}
+        </p>
+
+        <p>
+          These findings describe sampled geometric
+          visibility only. They do not establish
+          landing safety, actual solar power,
+          or guaranteed communication availability.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function MissionWindow({
   siteA,
   siteB,
@@ -429,6 +547,13 @@ export default function MissionWindow({
             nameB={request.siteB.name}
           />
 
+          <MissionInsights
+                dataA={dataA}
+                dataB={dataB}
+                nameA={request.siteA.name}
+                nameB={request.siteB.name}
+          />
+          
           <div className="notice">
             Source: NASA JPL Horizons. Percentages describe
             sampled geometric visibility, not continuous
