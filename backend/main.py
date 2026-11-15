@@ -291,3 +291,196 @@ def timeline(lat: float, lon: float, day: date):
             "are not yet modeled."
         ),
     }
+
+
+from datetime import datetime, timezone
+
+
+@lru_cache(maxsize=128)
+def get_mission_series(
+    body: str,
+    lat: float,
+    lon: float,
+    start_date: str,
+    duration: int,
+):
+    start = date.fromisoformat(start_date)
+    stop = start + timedelta(days=duration)
+
+    params = {
+        "format": "json",
+        "COMMAND": f"'{body}'",
+        "OBJ_DATA": "'NO'",
+        "MAKE_EPHEM": "'YES'",
+        "EPHEM_TYPE": "'OBSERVER'",
+        "CENTER": "'coord@301'",
+        "COORD_TYPE": "'GEODETIC'",
+        "SITE_COORD": f"'{lon},{lat},0'",
+        "START_TIME": f"'{start.isoformat()} 00:00'",
+        "STOP_TIME": f"'{stop.isoformat()} 00:00'",
+        "STEP_SIZE": "'6 h'",
+        "QUANTITIES": "'4'",
+        "CSV_FORMAT": "'YES'",
+        "TIME_TYPE": "'UT'",
+    }
+
+    try:
+        response = requests.get(
+            HORIZONS_URL,
+            params=params,
+            timeout=45,
+        )
+        response.raise_for_status()
+
+        result = response.json()["result"]
+
+        if "$$SOE" not in result or "$$EOE" not in result:
+            raise ValueError("No Horizons observation table")
+
+        table = result.split("$$SOE", 1)[1].split(
+            "$$EOE", 1
+        )[0]
+
+        rows = [
+            row for row in csv.reader(table.splitlines())
+            if row and any(cell.strip() for cell in row)
+        ]
+
+        expected_count = duration * 4 + 1
+
+        if len(rows) != expected_count:
+            raise ValueError(
+                f"Expected {expected_count} samples, "
+                f"received {len(rows)}"
+            )
+
+        start_utc = datetime(
+            start.year, start.month, start.day,
+            tzinfo=timezone.utc
+        )
+
+        observations = []
+
+        for index, row in enumerate(rows):
+            if len(row) < 5:
+                raise ValueError("Incomplete Horizons row")
+
+            observed_time = datetime.strptime(
+                row[0].strip(),
+                "%Y-%b-%d %H:%M"
+            ).replace(tzinfo=timezone.utc)
+
+            expected_time = start_utc + timedelta(
+                hours=index * 6
+            )
+
+            if observed_time != expected_time:
+                raise ValueError(
+                    "Unexpected Horizons timestamp"
+                )
+
+            azimuth = float(row[3].strip())
+            elevation = float(row[4].strip())
+
+            if not (
+                isfinite(azimuth) and isfinite(elevation)
+                and 0 <= azimuth <= 360
+                and -90 <= elevation <= 90
+            ):
+                raise ValueError("Invalid Horizons angles")
+
+            observations.append({
+                "time_utc": observed_time.isoformat().replace(
+                    "+00:00", "Z"
+                ),
+                "azimuth_deg": round(azimuth, 3),
+                "elevation_deg": round(elevation, 3),
+                "above_geometric_horizon": elevation > 0,
+            })
+
+        return observations
+
+    except (
+        requests.RequestException,
+        ValueError,
+        KeyError,
+        IndexError,
+        TypeError,
+    ) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"NASA mission analysis failed: {exc}"
+        )
+
+
+def summarize_visibility(observations):
+    visible = sum(
+        point["above_geometric_horizon"]
+        for point in observations
+    )
+
+    total = len(observations)
+
+    return {
+        "sample_count": total,
+        "samples_above_horizon": visible,
+        "percent_samples_above_horizon": round(
+            visible / total * 100, 1
+        ),
+    }
+
+
+@app.get("/api/mission-window")
+def mission_window(
+    lat: float,
+    lon: float,
+    day: date,
+    duration: int = 3,
+):
+    if duration not in (1, 3, 7, 14):
+        raise HTTPException(
+            status_code=400,
+            detail="Duration must be 1, 3, 7, or 14 days"
+        )
+
+    if not (
+        isfinite(lat) and isfinite(lon)
+        and -90 <= lat <= 90
+        and -180 <= lon <= 360
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid lunar coordinates"
+        )
+
+    sun = get_mission_series(
+        "10", lat, lon, day.isoformat(), duration
+    )
+
+    earth = get_mission_series(
+        "399", lat, lon, day.isoformat(), duration
+    )
+
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": day.isoformat(),
+        "duration_days": duration,
+        "step_hours": 6,
+        "sun": {
+            "observations": sun,
+            "summary": summarize_visibility(sun),
+        },
+        "earth": {
+            "observations": earth,
+            "summary": summarize_visibility(earth),
+        },
+        "source": "NASA JPL Horizons",
+        "limitations": (
+            "Percentages describe sampled geometric "
+            "visibility, not continuous visibility duration. "
+            "Local terrain, solar-panel orientation, "
+            "power generation, and communication link "
+            "quality are not modeled."
+        ),
+    }
