@@ -1,5 +1,5 @@
-
 import { useEffect, useState } from 'react'
+import VisibilityCharts from './VisibilityCharts'
 import './App.css'
 
 type Site = {
@@ -53,6 +53,7 @@ function formatAngle(value: number) {
   return `${value >= 0 ? '+' : ''}${value.toFixed(3)}°`
 }
 
+
 async function getConditions(
   site: Site,
   date: string,
@@ -65,7 +66,7 @@ async function getConditions(
   })
 
   const response = await fetch(
-    `${API_URL}/api/conditions?${params}`,
+    `${API_URL}/api/timeline?${params}`,
     { signal }
   )
 
@@ -76,8 +77,34 @@ async function getConditions(
     )
   }
 
-  return response.json()
+  const timeline = await response.json()
+
+  const sun = timeline.sun?.find(
+    (point: { hour: number }) => point.hour === 12
+  )
+
+  const earth = timeline.earth?.find(
+    (point: { hour: number }) => point.hour === 12
+  )
+
+  if (!sun || !earth) {
+    throw new Error(
+      'Missing 12:00 UTC observations in NASA timeline'
+    )
+  }
+
+  return {
+    latitude: site.latitude,
+    longitude: site.longitude,
+    date,
+    observation_time_utc: sun.time_utc,
+    sun,
+    earth,
+    source: timeline.source,
+    limitations: timeline.limitations,
+  }
 }
+
 
 function SiteResults({
   title,
@@ -346,6 +373,12 @@ function App() {
             />
           </div>
         </section>
+
+        <VisibilityCharts
+            siteA={selectedA}
+            siteB={selectedB}
+            date={date}
+        />
 
         {dataA && dataB && !loading && (
           <section className="panel analysis-panel">
