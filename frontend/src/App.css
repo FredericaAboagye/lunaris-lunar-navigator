@@ -281,3 +281,61 @@ footer {
     min-height: 280px !important;
   }
 }
+
+
+/* Phase 8: Multi-Day Mission Analysis */
+
+.mission-section {
+  margin-top: 55px;
+  margin-bottom: 45px;
+}
+
+.mission-section > .panel {
+  margin-bottom: 24px;
+}
+
+.mission-subheading {
+  margin-top: 35px;
+  margin-bottom: 20px;
+}
+
+.mission-button {
+  display: block;
+  margin-top: 22px;
+  margin-bottom: 18px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 8px;
+  background: #6b91f5;
+  color: #081124;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mission-button:hover {
+  background: #8cafff;
+}
+
+.mission-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.mission-chart {
+  width: 100%;
+  height: 380px;
+  min-height: 380px;
+  margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+  .mission-chart {
+    height: 300px;
+    min-height: 300px;
+  }
+
+  .mission-button {
+    width: 100%;
+  }
+}

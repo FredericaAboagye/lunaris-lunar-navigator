@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import VisibilityCharts from './VisibilityCharts'
+import MissionWindow from './MissionWindow'
 import './App.css'
+
 
 type Site = {
   id: string
@@ -386,6 +388,12 @@ function App() {
         </section>
 
         <VisibilityCharts
+            siteA={selectedA}
+            siteB={selectedB}
+            date={date}
+        />
+
+        <MissionWindow
             siteA={selectedA}
             siteB={selectedB}
             date={date}
