@@ -4,8 +4,10 @@ import {
   fetchSites,
   type Analysis,
   type Mode,
+  type ReferenceSite,
   type Site,
 } from './api'
+import LunarMap from './LunarMap'
 import Availability from './components/Availability'
 import Controls from './components/Controls'
 import ElevationChart from './components/ElevationChart'
@@ -75,6 +77,7 @@ function App() {
   const initial = useMemo(readUrl, [])
   const [catalog, setCatalog] = useState<Site[]>([])
   const [unsupported, setUnsupported] = useState<Record<string, string>>({})
+  const [referenceSites, setReferenceSites] = useState<ReferenceSite[]>([])
   const [selected, setSelected] = useState<string[]>(initial.sites)
   const [start, setStart] = useState(initial.start)
   const [days, setDays] = useState(initial.days)
@@ -108,6 +111,7 @@ function App() {
       .then(r => {
         setCatalog(r.sites)
         setUnsupported(r.unsupported)
+        setReferenceSites(r.reference_sites ?? [])
         setSelected(prev => {
           const valid = prev.filter(id => r.sites.some(s => s.id === id))
           const fallback = DEFAULT_SITES.filter(id =>
@@ -322,7 +326,8 @@ function App() {
                 <h2>Site comparison</h2>
                 <p className="muted">
                   {start === DEFAULT_START ? 'Example window: ' : ''}
-                  {entries[0].data.days} days from{' '}
+                  {entries[0].data.days} day
+                  {entries[0].data.days === 1 ? '' : 's'} from{' '}
                   {entries[0].data.start.slice(0, 10)} 00:00 UTC · observer{' '}
                   {height} m above the ground ·{' '}
                   {terrain
@@ -359,6 +364,14 @@ function App() {
                   ))}
                 </ul>
               </section>
+
+              <LunarMap
+                sites={catalog}
+                referenceSites={referenceSites}
+                selected={selected}
+                colors={SITE_COLORS}
+                onToggle={toggleSite}
+              />
 
               <div className="cursor-bar">
                 <label htmlFor="cursor">

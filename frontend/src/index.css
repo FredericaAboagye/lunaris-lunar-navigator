@@ -709,3 +709,83 @@ body {
     display: block;
   }
 }
+
+/* South-pole map (integrated from origin/main LunarMap, restyled) */
+.lunar-map {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 48em) {
+  .lunar-map {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.lunar-map__canvas {
+  position: relative;
+  width: 100%;
+  max-width: 34rem;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+}
+.lunar-map__canvas svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lunar-map__marker,
+.lunar-map__ref {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.lunar-map__marker {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 3px solid #fff;
+  background: #71767a;
+  box-shadow: 0 0 0 1px #1b1b1b;
+  cursor: pointer;
+}
+.lunar-map__marker::after {
+  /* Enlarged hit area for touch (44 px). */
+  content: '';
+  position: absolute;
+  inset: -0.6rem;
+}
+.lunar-map__marker.is-on {
+  border-color: #fff;
+}
+.lunar-map__marker:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.lunar-map__marker:focus-visible {
+  outline: 3px solid #ffbe2e;
+  outline-offset: 3px;
+}
+.lunar-map__ref {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid #ffbe2e;
+  background: transparent;
+  pointer-events: none;
+}
+.lunar-map__legend h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+.lunar-map__legend ul {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+.lunar-map__legend li span {
+  display: block;
+  color: hsl(var(--muted-foreground));
+}

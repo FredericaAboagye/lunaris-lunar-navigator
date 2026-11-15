@@ -1,6 +1,7 @@
 """Lunaris API: Sun/Earth geometry at lunar sites from NASA JPL Horizons."""
 
 import os
+from math import isfinite
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 
@@ -15,7 +16,7 @@ from visibility import SUN_RADIUS_DEG, disk_fraction, horizon_at
 LOCAL_ORIGINS = [
     f"http://{host}:{port}"
     for host in ("localhost", "127.0.0.1")
-    for port in (5173, 5174, 4173)
+    for port in (5173, 5174, 5175, 4173)
 ]
 
 app = FastAPI(title="Lunaris NASA Data API", version="2.0.0")
@@ -247,4 +248,62 @@ def analysis(
                   "MOON_ME DE421); terrain from LRO LOLA (NASA PGDA, PDS)",
         "generated_at": iso(datetime.now(timezone.utc)),
         "limitations": LIMITATIONS,
+    }
+
+
+def summarize_samples(observations):
+    """Share of 6-hourly samples with the body centre above 0 deg."""
+    total = len(observations)
+    visible = sum(o["above_geometric_horizon"] for o in observations)
+    return {
+        "sample_count": total,
+        "samples_above_horizon": visible,
+        "percent_samples_above_horizon": round(visible / total * 100, 1),
+    }
+
+
+@app.get("/api/mission-window", deprecated=True)
+def mission_window(lat: float = Query(..., ge=-90, le=90),
+                   lon: float = Query(..., ge=-180, le=360),
+                   day: date = Query(...),
+                   duration: int = 3):
+    """Upstream (origin/main) multi-day endpoint, kept with the same
+    request/response contract. It now uses the shared Horizons client
+    (horizons.fetch_series) instead of a second copy of the request and
+    CSV parsing code. Geometric (smooth-sphere) visibility only; the
+    terrain-aware equivalent is /api/analysis."""
+    if duration not in (1, 3, 7, 14):
+        raise HTTPException(400, "Duration must be 1, 3, 7, or 14 days")
+    if not (isfinite(lat) and isfinite(lon)):
+        raise HTTPException(400, "Invalid lunar coordinates")
+    if not (MIN_DATE <= day <= MAX_DATE - timedelta(days=duration)):
+        raise HTTPException(400, "day out of range")
+    out = {}
+    try:
+        for body in ("sun", "earth"):
+            times, az, el = fetch_series(body, round(lat, 4), round(lon, 4),
+                                         day.isoformat(), duration, 360)
+            obs = [
+                {"time_utc": iso(t), "azimuth_deg": a, "elevation_deg": e,
+                 "above_geometric_horizon": e > 0}
+                for t, a, e in zip(times, az, el)
+            ]
+            out[body] = {"observations": obs,
+                         "summary": summarize_samples(obs)}
+    except HorizonsError as exc:
+        raise HTTPException(502, f"NASA mission analysis failed: {exc}")
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        "start_date": day.isoformat(),
+        "duration_days": duration,
+        "step_hours": 6,
+        **out,
+        "source": "NASA JPL Horizons",
+        "limitations": (
+            "Percentages describe sampled geometric visibility, not "
+            "continuous visibility duration. Local terrain, solar-panel "
+            "orientation, power generation, and communication link "
+            "quality are not modeled."
+        ),
     }

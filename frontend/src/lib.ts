@@ -2,10 +2,14 @@ import type { Analysis, Site } from './api'
 
 export const SITE_COLORS = ['#0b4778', '#c05600', '#1a7f5a']
 
+// 1 and 3 days come from the upstream multi-day analysis (MissionWindow),
+// whose durations the main analysis now covers.
 export const DURATIONS = [
-  { days: 7, label: '7 days' },
-  { days: 14, label: '14 days' },
-  { days: 30, label: '30 days' },
+  { days: 1, label: '1 d' },
+  { days: 3, label: '3 d' },
+  { days: 7, label: '7 d' },
+  { days: 14, label: '14 d' },
+  { days: 30, label: '30 d' },
 ]
 
 export const MAX_SITES = 3

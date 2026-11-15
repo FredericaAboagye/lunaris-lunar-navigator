@@ -179,6 +179,39 @@ with sync_playwright() as p:
     check(page.locator("text=Exact window times (UTC)").is_visible(),
           "exact window times visible without opening anything")
 
+    print("Integrated upstream features (map, durations)")
+    page.goto(WEB + "/?sites=site04,site01&start=2027-03-01&days=30"
+              "&height=2&model=terrain")
+    settle(page)
+    check(page.locator("text=Multi-Day Mission Analysis").count() == 0,
+          "superseded MissionWindow section is gone (no duplicate analysis)")
+    markers = page.locator(".lunar-map__marker")
+    check(markers.count() == 4 and page.locator(".lunar-map__ref").count() == 4,
+          "map: 4 selectable validated sites, 4 reference-only markers")
+    check(page.locator(".lunar-map__ref").first.get_attribute("aria-hidden")
+          == "true", "reference markers are not interactive")
+    page.click(".lunar-map__marker[aria-label^='Peak near Shackleton']")
+    settle(page)
+    heads = page.evaluate("()=>[...document.querySelectorAll('.metrics-table thead th')].map(t=>t.innerText.trim())")
+    check("site07" in page.url and "Peak near Shackleton" in heads
+          and page.locator("#site-site07").is_checked()
+          and page.locator(".panorama").count() == 3,
+          "map selection updates URL, settings list, table and panoramas")
+    page.click(".lunar-map__marker[aria-label^='Peak near Shackleton']")
+    settle(page)
+    check("site07" not in page.url and not page.locator("#site-site07").is_checked(),
+          "map deselection is synchronised")
+    for d in (1, 3):
+        page.click(f"button:has-text('{d} d')")
+        settle(page)
+        sub = page.locator("#results .block p.muted").first.inner_text()
+        api_d = api(f"/api/analysis?site=site04&start=2027-03-01&days={d}&height=2")
+        sun = cells(page, "Sun visible")[0]["text"]
+        check(f"days={d}" in page.url
+              and sun == f"{api_d['metrics']['terrain']['sun_up_pct']:.1f}%"
+              and (f"{d} day from" if d == 1 else f"{d} days from") in sub,
+              f"{d}-day window (from upstream durations) matches API")
+
     print("Accessibility (desktop)")
     page.add_script_tag(url=AXE)
     v = page.evaluate("async()=>(await axe.run()).violations.map(x=>x.id+':'+x.nodes.length)")

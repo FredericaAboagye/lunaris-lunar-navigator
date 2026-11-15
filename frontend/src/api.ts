@@ -46,10 +46,20 @@ export type Site = {
 
 export const API_VERSION = 2
 
+export type ReferenceSite = {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  source: string
+  status: string
+}
+
 export type SitesResponse = {
   api_version?: number
   sites: Site[]
   unsupported: Record<string, string>
+  reference_sites?: ReferenceSite[]
 }
 
 export type Metrics = {

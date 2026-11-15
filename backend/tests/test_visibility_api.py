@@ -144,3 +144,37 @@ def test_analysis_queries_horizons_at_documented_point(client):
     pt = client.asset["point"]
     assert {(lat, lon) for _, lat, lon in client.calls} == {
         (pt["latitude"], pt["longitude"])}
+
+
+# --- Integration with origin/main (mission window, reference sites) ---
+
+def test_mission_window_contract_matches_upstream(client):
+    r = client.get("/api/mission-window", params={
+        "lat": -85.942, "lon": -0.944, "day": "2027-03-01", "duration": 3})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["step_hours"] == 6 and body["duration_days"] == 3
+    for b in ("sun", "earth"):
+        obs = body[b]["observations"]
+        assert len(obs) == 3 * 4 + 1
+        assert set(obs[0]) == {"time_utc", "azimuth_deg", "elevation_deg",
+                               "above_geometric_horizon"}
+        s = body[b]["summary"]
+        assert s["sample_count"] == len(obs)
+        assert s["samples_above_horizon"] == sum(
+            o["above_geometric_horizon"] for o in obs)
+    assert client.get("/api/mission-window", params={
+        "lat": -85, "lon": 0, "day": "2027-03-01",
+        "duration": 5}).status_code == 400
+
+
+def test_reference_sites_listed_but_never_analysed(client):
+    body = client.get("/api/sites").json()
+    refs = {r["id"]: r for r in body["reference_sites"]}
+    assert set(refs) == {"MMO01", "MMA01", "dGR201", "NR101"}
+    assert all("10.1029/2025JE009434" in r["source"] for r in refs.values())
+    validated = {s["id"] for s in body["sites"]}
+    assert not validated & set(refs)
+    for rid in refs:
+        assert client.get("/api/analysis", params={
+            "site": rid, "start": "2027-03-01"}).status_code == 404

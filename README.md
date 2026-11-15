@@ -211,6 +211,37 @@ We welcome contributions from team members with backgrounds in computer science,
 - Document limitations.
 - Help prepare the final submission.
 
+
+## Lunar Candidate Site Coordinates
+
+Lunaris uses two kinds of south-pole locations:
+
+1. **Terrain-validated sites (analysed).** Connecting Ridge, Shackleton
+   Rim, Peak near Shackleton and de Gerlache Rim: the region-of-interest
+   centroids published with the NASA PGDA 5 m LOLA maps (Barker et al.
+   2021). Each has a validated terrain horizon; see
+   [docs/TERRAIN_VALIDATION.md](docs/TERRAIN_VALIDATION.md).
+2. **Reference coordinates (shown on the map, not analysed).**
+   Representative research candidate sites within NASA's Artemis
+   south-pole landing regions, from Wueller et al. (2026), Journal of
+   Geophysical Research: Planets, Table A1,
+   https://doi.org/10.1029/2025JE009434 (NASA's October 2024 candidate
+   regions:
+   https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/).
+   They have no validated terrain horizon yet, so they are not mixed into
+   the terrain analysis.
+
+These are reference locations for exploratory analysis, not certified or
+approved lunar landing sites. Astronomical data: NASA JPL Horizons.
+
+Current limitations:
+- Terrain horizons exist only for the four validated sites.
+- Slope statistics are regional screening, not landing-hazard certification.
+- Sun visibility is not electrical power; Earth visibility is not a
+  guaranteed radio link.
+- `/api/mission-window` (multi-day sampled visibility) is geometric only and
+  kept for API compatibility; the app uses the terrain-aware `/api/analysis`.
+
 ## 🌿 GitHub Contribution Workflow
 
 Please do not push directly to `main` without coordinating with the team.
