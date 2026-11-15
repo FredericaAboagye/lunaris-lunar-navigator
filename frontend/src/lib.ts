@@ -9,7 +9,9 @@ export const DURATIONS = [
 ]
 
 export const MAX_SITES = 3
-export const DEFAULT_START = '2026-11-14'
+// Example window that shows a sunlight/Earth tradeoff. Not "today" and
+// not an optimized landing window.
+export const DEFAULT_START = '2027-03-01'
 export const HEIGHTS = [1, 2, 10]
 export const DEFAULT_HEIGHT = 2
 

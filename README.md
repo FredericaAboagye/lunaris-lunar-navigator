@@ -309,4 +309,6 @@ python -m terrain.check_ephemeris -89.761966 202.932803   # Horizons vs Skyfield
 python -m terrain.explain_sunlight site04 1              # smooth sphere vs terrain decomposition
 python -m terrain.check_timestep 2027-03-01 30           # time-step convergence
 python3 ../scripts/e2e_check.py                          # needs API on :8000 and vite preview on :4173
+python3 ../scripts/ui_check.py                           # interactive checks (pip install playwright; uses installed Chrome)
+cd ../frontend && npm test                               # comparison and visibility-explanation logic
 ```

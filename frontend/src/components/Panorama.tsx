@@ -1,4 +1,5 @@
 import { fmtDeg } from '../lib'
+import { explainVisibility, type Explanation } from '../logic/visibility'
 import type { Entry, Mode } from './types'
 
 const W = 720
@@ -18,13 +19,58 @@ function Disc(p: {
   color: string
   visible: boolean
 }) {
-  // Hidden bodies are drawn as dashed outlines "behind" the terrain.
+  // Hidden bodies are drawn as dashed outlines "behind" the horizon.
   return p.visible ? (
     <circle cx={p.cx} cy={p.cy} r={p.r} fill={p.color}
       stroke="#fff" strokeWidth="1.5" />
   ) : (
     <circle cx={p.cx} cy={p.cy} r={p.r} fill="none" stroke={p.color}
       strokeWidth="2" strokeDasharray="3 2" />
+  )
+}
+
+function Readout({
+  body,
+  dot,
+  elevation,
+  horizon,
+  mode,
+  e,
+}: {
+  body: string
+  dot: string
+  elevation: number
+  horizon: number
+  mode: Mode
+  e: Explanation
+}) {
+  const state =
+    e.visible === null ? 'unknown' : e.visible ? 'up' : 'down'
+  return (
+    <div className="readout">
+      <p className="readout__head">
+        <i className={`dot ${dot}`} aria-hidden="true" />
+        <strong>{body}</strong>{' '}
+        <span className={`readout__state readout__state--${state}`}>
+          {e.label}
+        </span>
+      </p>
+      <dl className="readout__nums">
+        <div>
+          <dt>Elevation</dt>
+          <dd>{fmtDeg(elevation)}</dd>
+        </div>
+        <div>
+          <dt>{mode === 'terrain' ? 'Terrain horizon' : 'Reference horizon'}</dt>
+          <dd>{fmtDeg(horizon)}</dd>
+        </div>
+        <div>
+          <dt>Clearance</dt>
+          <dd>{fmtDeg(elevation - horizon)}</dd>
+        </div>
+      </dl>
+      <p className="readout__reason">{e.reason}</p>
+    </div>
   )
 }
 
@@ -46,6 +92,8 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
   const y = (el: number) =>
     PAD.t + ((hi - el) / (hi - lo)) * (H - PAD.t - PAD.b)
   const degPx = (H - PAD.t - PAD.b) / (hi - lo)
+  const azPx = (W - PAD.l - PAD.r) / 360
+  const stretch = degPx / azPx
 
   const ridge = (vals: number[]) =>
     prof.azimuth_deg
@@ -70,6 +118,9 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
   const earthEl = data.earth.elevation_deg[i]
   const sunH = terrain ? data.sun.terrain_horizon_deg[i] : 0
   const earthH = terrain ? data.earth.terrain_horizon_deg[i] : 0
+  const complete = site.coverage.complete
+  const sunE = explainVisibility('Sun', sunEl, sunH, mode, complete)
+  const earthE = explainVisibility('Earth', earthEl, earthH, mode, complete)
   const ticks = []
   for (let v = lo; v <= hi; v += hi - lo > 8 ? 2 : 1) ticks.push(v)
 
@@ -84,19 +135,19 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
         {site.name}
         <span className="muted">
           {' '}
-          · ground {site.surface_height_m.toFixed(0)} m above reference ·
-          observer {data.height_m} m
+          · observer {data.height_m} m above the ground
         </span>
       </figcaption>
-      <div className="panorama__scroll">
+      <div
+        className="panorama__scroll"
+        role="region"
+        aria-label={`Horizon panorama for ${site.name}; scroll sideways on small screens`}
+        tabIndex={0}
+      >
         <svg
           viewBox={`0 0 ${W} ${H}`}
           role="img"
-          aria-label={`Horizon panorama for ${site.name}: Sun ${fmtDeg(
-            sunEl - sunH
-          )} and Earth ${fmtDeg(earthEl - earthH)} relative to the ${
-            terrain ? 'terrain' : 'geometric'
-          } horizon`}
+          aria-label={`Horizon panorama for ${site.name}. Sun: ${sunE.label}. Earth: ${earthE.label}.`}
         >
           {ticks.map(v => (
             <g key={v}>
@@ -121,32 +172,26 @@ export default function Panorama({ entry, cursorIndex, mode }: Props) {
           )}
           <Disc cx={x(sunAz)} cy={y(sunEl)}
             r={Math.max(SUN_R * degPx, 4)} color={SUN}
-            visible={sunEl > sunH} />
+            visible={sunE.visible !== false} />
           <Disc cx={x(earthAz)} cy={y(earthEl)}
             r={Math.max(EARTH_R * degPx, 4)} color={EARTH}
-            visible={earthEl > earthH} />
+            visible={earthE.visible !== false} />
         </svg>
       </div>
-      <dl className="sky__readout">
-        <div>
-          <dt><i className="dot dot--sun" />Sun</dt>
-          <dd>
-            {fmtDeg(sunEl)} · horizon {fmtDeg(sunH)}{' '}
-            <span className={sunEl > sunH ? 'up' : 'down'}>
-              {sunEl > sunH ? 'visible' : 'hidden'}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt><i className="dot dot--earth" />Earth</dt>
-          <dd>
-            {fmtDeg(earthEl)} · horizon {fmtDeg(earthH)}{' '}
-            <span className={earthEl > earthH ? 'up' : 'down'}>
-              {earthEl > earthH ? 'visible' : 'hidden'}
-            </span>
-          </dd>
-        </div>
-      </dl>
+      <p className="panorama__swipe" aria-hidden="true">
+        Swipe sideways to see all 360°.
+      </p>
+      <p className="panorama__scale">
+        Vertical scale stretched about {Math.round(stretch)}× relative to the
+        azimuth axis, so low hills look steep. Discs are drawn at the
+        vertical scale (minimum size for legibility).
+      </p>
+      <div className="readouts">
+        <Readout body="Sun" dot="dot--sun" elevation={sunEl}
+          horizon={sunH} mode={mode} e={sunE} />
+        <Readout body="Earth" dot="dot--earth" elevation={earthEl}
+          horizon={earthH} mode={mode} e={earthE} />
+      </div>
     </figure>
   )
 }

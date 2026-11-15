@@ -85,14 +85,14 @@ export default function Availability({
           }))
         return (
           <div className="availability__site" key={e.site.id}>
-            <h4>
+            <h3>
               <span
                 className="swatch"
                 style={{ background: e.color }}
                 aria-hidden="true"
               />
               {e.site.name}
-            </h4>
+            </h3>
             <Strip label="Sun" intervals={conv('sun')} total={total}
               color={SUN} cursorPct={cursorPct} />
             <Strip label="Earth" intervals={conv('earth')} total={total}

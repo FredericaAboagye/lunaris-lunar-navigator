@@ -67,7 +67,11 @@ class Table(HTMLParser):
         if not self.in_table:
             return
         if tag in ("th", "td") and self.cell is not None:
-            self.row.append(self.cell.strip())
+            text = self.cell.strip()
+            # Drop screen-reader and tie annotations inside value cells.
+            for extra in (" (joint best)", " (best)", " tie"):
+                text = text.replace(extra, "")
+            self.row.append(text.strip())
             self.cell = None
         if tag == "tr" and self.row:
             self.rows[self.row[0]] = self.row[1:]

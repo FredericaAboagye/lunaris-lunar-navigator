@@ -52,18 +52,23 @@ export default function Windows({
 
         return (
           <div key={site.id}>
-            <h4>
+            <h3>
               <span
                 className="swatch"
                 style={{ background: color }}
                 aria-hidden="true"
               />
               {site.name}
-            </h4>
+            </h3>
             {rows.length === 0 ? (
               <p className="muted">No events in this window.</p>
             ) : (
-              <div className="table-scroll windows-scroll">
+              <div
+                className="table-scroll windows-scroll"
+                role="region"
+                aria-label={`Exact window times for ${site.name}`}
+                tabIndex={0}
+              >
                 <table className="usa-table usa-table--borderless">
                   <thead>
                     <tr>

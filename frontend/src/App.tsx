@@ -12,6 +12,8 @@ import ElevationChart from './components/ElevationChart'
 import MetricsTable from './components/MetricsTable'
 import Panorama from './components/Panorama'
 import Summary from './components/Summary'
+import Screening from './components/Screening'
+import WindowCompare from './components/WindowCompare'
 import Windows from './components/Windows'
 import {
   DEFAULT_HEIGHT,
@@ -26,7 +28,7 @@ import {
   toCsv,
 } from './lib'
 
-const DEFAULT_SITES = ['site04', 'site01', 'site11']
+const DEFAULT_SITES = ['site04', 'site01']
 
 function readUrl() {
   const q = new URLSearchParams(window.location.search)
@@ -84,6 +86,21 @@ function App() {
   const [error, setError] = useState('')
   const [cursor, setCursor] = useState(0)
   const [retry, setRetry] = useState(0)
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => window.matchMedia('(min-width: 62em)').matches
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 62em)')
+    const sync = () => mq.matches && setSettingsOpen(true)
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  function openWindow(next: string) {
+    setStart(next)
+    document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -197,51 +214,78 @@ function App() {
         </div>
       </header>
 
-      <section className="hero">
+      <main id="main">
+      <section className="hero" aria-labelledby="page-title">
         <div className="container">
           <p className="eyebrow">Lunar south pole · mission planning</p>
-          <h1>See when each site has sunlight and a view of Earth.</h1>
+          <h1 id="page-title">
+            See when each site has sunlight and a view of Earth.
+          </h1>
           <p className="lead">
+            Compare documented candidate sites near the lunar south pole:
             Sun and Earth positions from NASA JPL Horizons, checked against
-            the real terrain horizon from LRO laser altimetry, for
-            documented candidate sites near the lunar south pole.
+            the terrain horizon from LRO laser altimetry.
           </p>
         </div>
       </section>
 
-      <main className="container layout">
-        <aside className="sidebar" aria-label="Configuration">
-          <h2>Configure</h2>
-          <Controls
-            sites={catalog}
-            unsupported={unsupported}
-            selected={selected}
-            onToggle={toggleSite}
-            start={start}
-            onStart={setStart}
-            days={days}
-            onDays={setDays}
-            height={height}
-            onHeight={setHeight}
-            mode={mode}
-            onMode={setMode}
-          />
-          <button
-            type="button"
-            className="usa-button usa-button--outline usa-button--full"
-            disabled={!ready}
-            onClick={() =>
-              downloadText(
-                `lunaris-${start}-${days}d-${height}m.csv`,
-                toCsv(entries)
-              )
-            }
+      <div className="container layout">
+        <aside className="sidebar" aria-label="Settings">
+          <details
+            className="settings"
+            open={settingsOpen}
+            onToggle={e => setSettingsOpen(e.currentTarget.open)}
           >
-            Download data (CSV)
-          </button>
+            <summary className="settings__summary">
+              <span className="settings__title">Settings</span>
+              <span className="settings__state">
+                {selected.length} site{selected.length === 1 ? '' : 's'} ·{' '}
+                {start} · {days} d · {height} m ·{' '}
+                {mode === 'terrain' ? 'terrain' : 'smooth sphere'}
+              </span>
+              <span className="settings__toggle" aria-hidden="true">
+                {settingsOpen ? 'Hide ▴' : 'Change ▾'}
+              </span>
+            </summary>
+            <h2 className="settings__heading">Configure</h2>
+            <Controls
+              sites={catalog}
+              unsupported={unsupported}
+              selected={selected}
+              onToggle={toggleSite}
+              start={start}
+              onStart={setStart}
+              days={days}
+              onDays={setDays}
+              height={height}
+              onHeight={setHeight}
+              mode={mode}
+              onMode={setMode}
+            />
+            {start === DEFAULT_START && (
+              <p className="usa-hint example-note">
+                Opens with an example window (1 Mar 2027 UTC) that shows a
+                tradeoff. It is not today’s date or an optimized landing
+                window.
+              </p>
+            )}
+            <button
+              type="button"
+              className="usa-button usa-button--outline usa-button--full"
+              disabled={!ready}
+              onClick={() =>
+                downloadText(
+                  `lunaris-${start}-${days}d-${height}m.csv`,
+                  toCsv(entries)
+                )
+              }
+            >
+              Download data (CSV)
+            </button>
+          </details>
         </aside>
 
-        <div className="content">
+        <div className="content" id="results">
           {error && (
             <div className="usa-alert usa-alert--error" role="alert">
               <div className="usa-alert__body">
@@ -277,13 +321,14 @@ function App() {
               <section className="block">
                 <h2>Site comparison</h2>
                 <p className="muted">
+                  {start === DEFAULT_START ? 'Example window: ' : ''}
                   {entries[0].data.days} days from{' '}
-                  {entries[0].data.start.slice(0, 10)} UTC · observer{' '}
+                  {entries[0].data.start.slice(0, 10)} 00:00 UTC · observer{' '}
                   {height} m above the ground ·{' '}
                   {terrain
                     ? 'LOLA terrain horizon'
                     : 'smooth-sphere horizon (0°)'}{' '}
-                  · best value per row highlighted
+                  · best value per row highlighted; equal values are ties
                 </p>
                 {!terrain && (
                   <div className="usa-alert usa-alert--warning usa-alert--slim">
@@ -375,10 +420,28 @@ function App() {
                   mode={mode} />
               </section>
 
-              <section className="block">
-                <Accordion title="Event windows (Earth visible, Earth outages, darkness)">
-                  <Windows entries={entries} mode={mode} />
-                </Accordion>
+              <section className="block" aria-labelledby="times-heading">
+                <h2 id="times-heading">Exact window times (UTC)</h2>
+                <p className="muted">
+                  Every Earth-visible period, Earth outage and period of
+                  darkness in this window, by site
+                  ({terrain ? 'LOLA terrain horizon' : 'smooth-sphere horizon'}).
+                </p>
+                <Windows entries={entries} mode={mode} />
+              </section>
+
+              <WindowCompare
+                sites={entries.map(e => ({ site: e.site, color: e.color }))}
+                start={start}
+                days={days}
+                height={height}
+                mode={mode}
+                onOpen={openWindow}
+              />
+
+              <Screening entries={entries} />
+
+              <section className="block" aria-label="Definitions and limitations">
                 <Accordion title="Definitions, data and limitations">
                   <h4>What the numbers mean</h4>
                   <ul>
@@ -412,6 +475,13 @@ function App() {
                       <strong>Earth visible is not a guaranteed radio
                       link</strong>: antennas, link margins and ground
                       station schedules are not modelled.
+                    </li>
+                    <li>
+                      <strong>Visibility explanations</strong> in the horizon
+                      view describe the body’s centre against the modelled
+                      terrain horizon (or 0° in smooth-sphere mode). The
+                      partial-disk note uses the same area formula as the
+                      mean-solar-disk metric.
                     </li>
                     <li>
                       <strong>Slope statistics are regional
@@ -453,6 +523,7 @@ function App() {
             </div>
           )}
         </div>
+      </div>
       </main>
 
       <footer className="footer">

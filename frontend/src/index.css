@@ -9,6 +9,7 @@
   --border: 210 10% 85%;
   --primary: 217 86% 31%; /* NASA blue */
   --accent: 8 97% 56%; /* NASA red */
+  --accent-text: 6 78% 40%; /* NASA red darkened for text contrast */
   --good: 160 60% 28%;
   --radius: 0.5rem;
   --gutter: clamp(1rem, 4vw, 2rem);
@@ -99,7 +100,7 @@ body {
 }
 .eyebrow {
   margin: 0;
-  color: hsl(var(--accent));
+  color: hsl(var(--accent-text));
   font-weight: 700;
   font-size: 0.8rem;
   letter-spacing: 0.1em;
@@ -251,6 +252,7 @@ body {
 }
 .kpi {
   display: grid;
+  align-content: start;
   gap: 0.25rem;
   padding: 1.25rem;
   border: 1px solid hsl(var(--border));
@@ -474,9 +476,11 @@ body {
 /* Horizon panoramas */
 .panorama-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
 }
 .panorama {
+  min-width: 0;
   margin: 0;
   padding: 1rem;
   border: 1px solid hsl(var(--border));
@@ -515,4 +519,193 @@ body {
   border-top: 1px solid hsl(var(--border));
   font-size: 0.78rem;
   color: hsl(var(--muted-foreground));
+}
+
+/* Settings: always open on wide screens, collapsible on narrow ones */
+.settings__summary {
+  display: none;
+}
+.settings__heading {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+}
+@media (max-width: 61.99em) {
+  .settings__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    cursor: pointer;
+    font-weight: 700;
+    min-height: 2.75rem;
+    padding: 0.25rem 0;
+  }
+  .settings__state {
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: hsl(var(--muted-foreground));
+  }
+  .settings[open] .settings__summary {
+    margin-bottom: 1rem;
+  }
+  .settings__heading {
+    display: none;
+  }
+  .hero {
+    padding-block: 1.5rem 1.25rem;
+  }
+  .hero h1 {
+    font-size: 1.75rem;
+  }
+  .lead {
+    font-size: 1rem;
+  }
+  .layout {
+    padding-block: 1.25rem 3rem;
+  }
+}
+.example-note {
+  margin: 0;
+}
+
+/* Summary */
+.tradeoff {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid hsl(var(--primary));
+  background: hsl(var(--muted));
+  font-weight: 600;
+  max-width: 75ch;
+}
+.kpi h3.kpi__label {
+  margin: 0 0 0.25rem;
+}
+.kpi p {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.kpi .kpi__caveat {
+  margin: 0.25rem 0 0;
+}
+
+/* Comparison table groups */
+.group-row th {
+  padding-top: 1.25rem;
+  background: hsl(var(--muted));
+}
+.group-row__title {
+  display: block;
+  font-size: 1rem;
+}
+.group-row__caveat {
+  display: block;
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: hsl(var(--muted-foreground));
+}
+.tie-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Horizon readouts */
+.panorama__scale {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+}
+.readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.readout {
+  min-width: 0;
+}
+.readout__head {
+  margin: 0 0 0.25rem;
+}
+.readout__state {
+  margin-left: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.readout__state--up {
+  color: hsl(var(--good));
+}
+.readout__state--down {
+  color: hsl(var(--foreground));
+}
+.readout__state--unknown {
+  color: hsl(var(--accent-text));
+}
+.readout__nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.readout__nums div {
+  display: flex;
+  gap: 0.3rem;
+}
+.readout__nums dt {
+  color: hsl(var(--muted-foreground));
+}
+.readout__nums dd {
+  margin: 0;
+  font-weight: 600;
+}
+.readout__reason {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Window comparison */
+.window-table th,
+.window-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.window-table tr.is-current th,
+.window-table tr.is-current td {
+  background: hsl(var(--muted));
+}
+.open-window {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+.small {
+  font-size: 0.82rem;
+}
+
+[role='region'][tabindex='0']:focus-visible {
+  outline: 3px solid hsl(var(--accent-text));
+  outline-offset: 2px;
+}
+
+.settings__toggle {
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+.panorama__swipe {
+  display: none;
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+}
+@media (max-width: 40em) {
+  .panorama__swipe {
+    display: block;
+  }
 }
