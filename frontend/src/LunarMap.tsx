@@ -110,6 +110,18 @@ export default function LunarMap({
                 strokeWidth="2"
               />
 
+
+              {/* NASA LRO south-pole imagery, 80°S–90°S */}
+              <image
+              href="/lunaris_south_pole_80S.png"
+              x="60"
+              y="60"
+              width="480"
+              height="480"
+              preserveAspectRatio="none"
+              />
+
+
               {[120, 240].map(radius => (
                 <circle
                   key={radius}
@@ -249,11 +261,12 @@ export default function LunarMap({
         </div>
 
         <p className="muted">
-          Schematic south-polar stereographic map
-          (80°S–90°S). Not a terrain or hazard map.
-          Candidate points are research reference coordinates,
+          Lunar imagery: NASA Lunar Reconnaissance Orbiter Camera
+          (LROC), WAC South Pole Mosaic.
+          South-polar stereographic projection (80°S–90°S).
+          Candidate markers represent research reference coordinates,
           not approved touchdown locations.
-          East-positive longitude is used.
+          Imagery does not constitute a landing-hazard assessment.
         </p>
       </div>
     </section>
