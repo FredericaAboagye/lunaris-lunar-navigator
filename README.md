@@ -11,8 +11,10 @@ Our goal is to make lunar exploration more accessible by helping users evaluate 
 
 **Challenge:** Lunar Landing Site Navigator  
 **Event:** NASA Space Apps Challenge 2026 — Temecula, California  
-**Team:** Pitzer Connect  
-**Project Status:** 🚧 In Development
+**Team:** Pitzer Connect 
+**Project Status:** ✅ Working Prototype — Final Validation
+**Live Demo:** https://lunaris-lunar-navigator.vercel.app
+**Backend API:** https://lunaris-lunar-navigator.onrender.com/docs
 
 ---
 
@@ -43,15 +45,29 @@ Our application is designed to let users:
 
 The long-term goal is to support informed decision-making through scientifically grounded visualizations.
 
-## ✅ Current Progress
 
-### Completed
+## ✅ Current Features
 
-- [x] Sun/Earth azimuth and elevation from NASA JPL Horizons at documented lunar points, cross-checked against Skyfield + NAIF SPICE kernels (agreement ≤ 1.7″).
-- [x] Terrain horizons from LRO LOLA elevation (5 m/pix PGDA site maps + 80 m/pix PDS regional map to 250 km), including lunar curvature and observer height (1, 2, 10 m).
-- [x] Four documented sites (Barker et al. 2021 RoI centroids) pass all checks; results are consistent with the published > 70 % illumination threshold (a threshold, not a matched value). See [docs/TERRAIN_VALIDATION.md](docs/TERRAIN_VALIDATION.md) and [docs/AUDIT.md](docs/AUDIT.md).
-- [x] Metrics: Sun visible %, mean solar disk visible, longest darkness, Earth visible %, longest Earth outage, Sun+Earth overlap, regional slope screening.
-- [x] NASA Web Design System UI: horizon panoramas, elevation-vs-horizon charts, visibility timeline, time cursor, terrain vs smooth-sphere toggle, CSV export.
+- NASA JPL Horizons Sun and Earth position data
+- Lunar south-pole candidate-site selection and comparison
+- Terrain-aware horizon analysis using LRO LOLA elevation data
+- Smooth-sphere comparison mode
+- Interactive sunlight and Earth-visibility visualizations
+- Mission windows from 1 to 30 days
+- Earth communication outage and darkness event summaries
+- Date-window comparison and terrain slope screening
+- NASA LRO lunar imagery
+- Responsive interface with light and dark modes
+- Input validation and automated visibility tests
+
+## 🚀 Live Application
+
+Explore Lunaris:
+https://lunaris-lunar-navigator.vercel.app
+
+API documentation:
+https://lunaris-lunar-navigator.onrender.com/docs
+
 
 ### Next
 
@@ -166,19 +182,28 @@ Additional lunar terrain and mapping resources under consideration:
 - NASA Moon Trek: https://trek.nasa.gov/moon/
 - LROC QuickMap: https://quickmap.lroc.asu.edu/
 
+
 ### Scientific Limitations
 
-The current prototype calculates apparent positions relative to the geometric horizon.
+Lunaris is a research and educational mission-planning
+prototype, not a certified landing-site selection system.
 
-It does not yet model:
+The application combines NASA JPL Horizons astronomical
+positions with LRO-derived terrain information to estimate
+Sun and Earth visibility at selected lunar locations.
 
-- Local terrain obstructions.
-- Crater-wall shadowing.
-- Solar panel orientation.
-- Complete illumination or communication windows.
-- Mission safety or engineering feasibility.
+Important limitations:
 
-Results should not be interpreted as certified landing-site assessments.
+- Terrain modeling depends on dataset resolution and accuracy.
+- Results do not establish landing safety or hazard clearance.
+- Solar visibility does not guarantee usable electrical power.
+- Earth visibility does not guarantee reliable communication.
+- Engineering constraints, spacecraft systems, and complete
+  mission feasibility are outside the model's scope.
+
+Candidate sites are research reference locations, not
+approved touchdown coordinates.
+
 
 ## 🤝 Team Collaboration
 
