@@ -38,9 +38,10 @@ def client(monkeypatch):
     step = asset["azimuth_step_deg"]
     t0 = datetime(2026, 11, 14, tzinfo=timezone.utc)
 
+    calls = []
+
     def fake_series(body, lat, lon, start, days, step_minutes):
-        assert (lat, lon) == (asset["point"]["latitude"],
-                              asset["point"]["longitude"])
+        calls.append((body, lat, lon))
         n = days * 24 * 60 // step_minutes + 1
         times = [t0 + timedelta(minutes=i * step_minutes) for i in range(n)]
         az = [(i * 7.0) % 360 for i in range(n)]
@@ -53,7 +54,9 @@ def client(monkeypatch):
         return times, az, el
 
     monkeypatch.setattr(main, "fetch_series", fake_series)
-    return TestClient(main.app)
+    c = TestClient(main.app)
+    c.calls, c.asset = calls, asset
+    return c
 
 
 def test_terrain_clearance_drives_visibility(client):
@@ -80,3 +83,64 @@ def test_sites_lists_only_validated_and_flags_unsupported(client):
     body = client.get("/api/sites").json()
     assert all(s["validation"]["passed"] for s in body["sites"])
     assert "site23" in body["unsupported"]
+
+
+def test_disk_fraction_is_area_not_chord():
+    # Monte Carlo area of a unit disk above a horizontal chord at height c.
+    import random
+
+    rng = random.Random(1)
+    pts = []
+    while len(pts) < 200_000:
+        x, y = rng.uniform(-1, 1), rng.uniform(-1, 1)
+        if x * x + y * y <= 1:
+            pts.append(y)
+    for c in (-0.6, -0.2, 0.3, 0.8):
+        # Centre is c radii above the horizon: visible where y > -c.
+        area = sum(1 for y in pts if y > -c) / len(pts)
+        assert disk_fraction(c, 1.0) == pytest.approx(area, abs=0.005)
+        linear = (1 + c) / 2  # diameter-based fraction, the wrong model
+        if abs(c) > 0.2:
+            assert abs(disk_fraction(c, 1.0) - linear) > 0.02
+
+
+@pytest.mark.parametrize("params,code", [
+    ({"days": 0}, 422), ({"days": 61}, 422), ({"start": "2026-13-01"}, 422),
+    ({"start": "1999-12-31"}, 400), ({"start": "2049-12-02"}, 400),
+    ({"height": 7}, 400), ({"step": 120}, 400), ({"site": "x" * 41}, 422),
+])
+def test_invalid_inputs_rejected(client, params, code):
+    q = {"site": "site04", "start": "2026-11-14", "days": 30, **params}
+    assert client.get("/api/analysis", params=q).status_code == code
+
+
+def test_date_boundaries_accepted(client):
+    for start, days in (("2000-01-01", 1), ("2049-12-01", 30)):
+        r = client.get("/api/analysis", params={
+            "site": "site04", "start": start, "days": days})
+        assert r.status_code == 200, (start, r.text)
+
+
+def test_unsupported_site_explains_why(client):
+    r = client.get("/api/analysis", params={
+        "site": "site23", "start": "2026-11-14"})
+    assert r.status_code == 404 and "not available" in r.json()["detail"]
+
+
+def test_version_and_legacy_v1_shape(client):
+    assert client.get("/api/health").json()["api_version"] == 2
+    r = client.get("/api/timeline", params={
+        "lat": -89.5, "lon": 0, "day": "2026-11-14"})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["sun"]) == 13 and body["sun"][6]["hour"] == 12
+    assert set(body["earth"][0]) >= {"time_utc", "azimuth_deg",
+                                     "elevation_deg", "hour"}
+
+
+def test_analysis_queries_horizons_at_documented_point(client):
+    client.get("/api/analysis", params={"site": "site04",
+                                        "start": "2026-11-14", "days": 1})
+    pt = client.asset["point"]
+    assert {(lat, lon) for _, lat, lon in client.calls} == {
+        (pt["latitude"], pt["longitude"])}

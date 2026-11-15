@@ -93,6 +93,15 @@ def test_missing_terrain_is_reported_not_assumed_flat():
     prof = horizon_profile(-89.95, 0.0, 2.0, [g], azimuth_step=45,
                            max_distance=50_000, fine_reach=6_000)
     assert (prof["coverage_m"] < 50_000).all()
+    assert prof["coverage_complete"] is False
+
+
+def test_full_coverage_reaches_max_distance_exactly():
+    g = flat_grid(half=40_000.0, res=40.0)
+    prof = horizon_profile(-89.99, 0.0, 2.0, [g], azimuth_step=45,
+                           max_distance=20_000, fine_reach=5_000)
+    assert prof["coverage_complete"] is True
+    assert (prof["coverage_m"] == 20_000).all()
 
 
 def test_horizon_interpolation_wraps():

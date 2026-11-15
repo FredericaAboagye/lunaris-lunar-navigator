@@ -11,6 +11,7 @@ Run from backend/:
 """
 
 import json
+import os
 import sys
 import tarfile
 import time
@@ -100,8 +101,11 @@ def roi_point(pgda):
     reader = shapefile.Reader(str(shp))
     x, y = reader.records()[0]
     poly = reader.shapes()[0]
-    gmt = next(folder.glob("*regionProps*"), None)
-    return float(x), float(y), poly.points, (gmt.name if gmt else "")
+    # The archive's .gmt is a symlink whose (missing) target name encodes
+    # the RoI criterion, e.g. "..._regionProps_avgillGT070.gmt".
+    link = folder / f"{pgda}_ROIs.gmt"
+    target = os.readlink(link) if link.is_symlink() else ""
+    return float(x), float(y), poly.points, target
 
 
 def point_in_polygon(x, y, pts):
@@ -234,9 +238,14 @@ def build_site(site_id, regional):
 
     mean_illum, n = published_check(lat, lon, profiles[1.0])
     checks["published_illumination"] = {
-        "reference": "Barker et al. (2021) PSS 203:105119 — PGDA ROI "
-                     f"'{roi_file}' (average illumination > 70 % at 1 m, "
-                     "2024-01-01 to 2026-01-01)",
+        "reference": "Barker et al. (2021) PSS 203:105119, Sec. 5 and "
+                     "Fig. 3: RoIs are connected pixels with average "
+                     "illumination (visible solar-disk fraction) > 70 % at "
+                     "1 m, 2024-01-01 to 2026-01-01, area > 2500 m^2. "
+                     f"PGDA RoI file: {roi_file}. Point = RoI centroid "
+                     "(matches Table 2 for Site 1).",
+        "claim": "consistency with a published threshold, not a match to "
+                 "a published value",
         "our_mean_solar_disk_fraction_1m": round(mean_illum, 3),
         "samples": n,
         "pass": mean_illum >= TOL["published_min_mean_illumination"],
@@ -244,7 +253,10 @@ def build_site(site_id, regional):
     print(f"  published check: mean illumination {mean_illum:.3f}")
 
     coverage = min(float(p["coverage_m"].min()) for p in profiles.values())
-    ok = (checks["roi_point_inside_polygon"]
+    complete = all(p["coverage_complete"] for p in profiles.values())
+    checks["terrain_coverage_complete"] = complete
+    ok = (complete
+          and checks["roi_point_inside_polygon"]
           and checks["coordinate_round_trip_m"] < 1e-3
           and checks["registration"]["pass"]
           and all(c["pass"] for c in convergence.values())
@@ -277,7 +289,7 @@ def build_site(site_id, regional):
         "coverage": {
             "terrain_search_km": MAX_DISTANCE_M / 1000,
             "min_terrain_coverage_km": round(coverage / 1000, 1),
-            "complete": coverage >= MAX_DISTANCE_M - 1,
+            "complete": complete,
             "local_dem": f"PGDA {pgda} LOLA LDEM 5 m/pix (16 x 16 km)",
             "regional_dem": "PDS LOLA LDEM_80S_80M (80 m/pix, to 80°S)",
             "far_field_m": FAR_FIELD_M,

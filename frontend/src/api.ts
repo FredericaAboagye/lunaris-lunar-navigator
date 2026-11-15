@@ -44,7 +44,10 @@ export type Site = {
   }
 }
 
+export const API_VERSION = 2
+
 export type SitesResponse = {
+  api_version?: number
   sites: Site[]
   unsupported: Record<string, string>
 }
@@ -91,6 +94,7 @@ export type Analysis = {
     geometric: Metrics
     terrain_far_field: {
       sun_up_pct: number
+      mean_sun_disk_pct: number
       earth_visible_pct: number
       far_field_m: number
     }
@@ -122,13 +126,34 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     const body = await response.json().catch(() => null)
     const detail =
       typeof body?.detail === 'string' ? body.detail : null
-    throw new Error(detail || `Data service error (${response.status})`)
+    const err = new Error(
+      detail || `Data service error (${response.status})`
+    ) as Error & { status?: number }
+    err.status = response.status
+    throw err
   }
   return response.json() as Promise<T>
 }
 
-export function fetchSites(signal?: AbortSignal) {
-  return getJson<SitesResponse>('/api/sites', signal)
+function versionError(reported?: number) {
+  return new Error(
+    `This page needs Lunaris API v${API_VERSION}, but the data service ` +
+      `reports ${reported ? `v${reported}` : 'an older version'}. ` +
+      'Deploy the backend before the frontend.'
+  )
+}
+
+export async function fetchSites(signal?: AbortSignal) {
+  let body: SitesResponse
+  try {
+    body = await getJson<SitesResponse>('/api/sites', signal)
+  } catch (err) {
+    // API v1 had no /api/sites endpoint.
+    if ((err as { status?: number }).status === 404) throw versionError()
+    throw err
+  }
+  if (body.api_version !== API_VERSION) throw versionError(body.api_version)
+  return body
 }
 
 const cache = new Map<string, Promise<Analysis>>()

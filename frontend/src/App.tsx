@@ -390,9 +390,18 @@ function App() {
                     <li>
                       <strong>Terrain horizon</strong> is the highest
                       ground in each direction from LOLA laser altimetry,
-                      including lunar curvature, out to 250 km.{' '}
+                      including lunar curvature, out to 250 km. Extending the
+                      search to 300 km changes nothing — that tests search
+                      distance only, not overall accuracy.{' '}
                       <strong>Smooth sphere</strong> uses 0° and ignores
                       terrain.
+                    </li>
+                    <li>
+                      <strong>Nearby-ground sensitivity</strong> repeats the
+                      calculation ignoring terrain within 200 m, where the
+                      5 m map is mostly interpolated. It shows how much that
+                      part matters; it is not a statistical confidence
+                      interval.
                     </li>
                     <li>
                       <strong>Sun visible is not power generated</strong>:
@@ -421,14 +430,16 @@ function App() {
                         {e.site.coverage.complete
                           ? ' with full coverage'
                           : ' — coverage incomplete'}
-                        . Validation{' '}
-                        {e.site.validation.passed ? 'passed' : 'failed'}:
-                        mean illumination at 1 m, 2024–2025 ={' '}
+                        . Checks{' '}
+                        {e.site.validation.passed ? 'passed' : 'failed'}.
+                        Our mean illumination at 1 m, 2024–2025 is{' '}
                         {(
                           e.site.validation.published_check
                             .our_mean_solar_disk_fraction_1m * 100
                         ).toFixed(1)}
-                        % vs &gt; 70 % published (Barker et al. 2021).
+                        %, consistent with this point lying in a region
+                        Barker et al. (2021) report as above 70 % — a
+                        threshold, not a published value to match.
                       </li>
                     ))}
                   </ul>

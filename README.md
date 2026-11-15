@@ -49,7 +49,7 @@ The long-term goal is to support informed decision-making through scientifically
 
 - [x] Sun/Earth azimuth and elevation from NASA JPL Horizons at documented lunar points, cross-checked against Skyfield + NAIF SPICE kernels (agreement ≤ 1.7″).
 - [x] Terrain horizons from LRO LOLA elevation (5 m/pix PGDA site maps + 80 m/pix PDS regional map to 250 km), including lunar curvature and observer height (1, 2, 10 m).
-- [x] Four documented sites (Barker et al. 2021 ROIs) validated end to end; see [docs/TERRAIN_VALIDATION.md](docs/TERRAIN_VALIDATION.md).
+- [x] Four documented sites (Barker et al. 2021 RoI centroids) pass all checks; results are consistent with the published > 70 % illumination threshold (a threshold, not a matched value). See [docs/TERRAIN_VALIDATION.md](docs/TERRAIN_VALIDATION.md) and [docs/AUDIT.md](docs/AUDIT.md).
 - [x] Metrics: Sun visible %, mean solar disk visible, longest darkness, Earth visible %, longest Earth outage, Sun+Earth overlap, regional slope screening.
 - [x] NASA Web Design System UI: horizon panoramas, elevation-vs-horizon charts, visibility timeline, time cursor, terrain vs smooth-sphere toggle, CSV export.
 
@@ -306,4 +306,7 @@ python -m pytest -q tests                      # unit + API tests
 python -m terrain.build                        # downloads ~500 MB once to terrain/.cache
 python -m terrain.report                       # writes docs/TERRAIN_VALIDATION.md
 python -m terrain.check_ephemeris -89.761966 202.932803   # Horizons vs Skyfield/SPICE
+python -m terrain.explain_sunlight site04 1              # smooth sphere vs terrain decomposition
+python -m terrain.check_timestep 2027-03-01 30           # time-step convergence
+python3 ../scripts/e2e_check.py                          # needs API on :8000 and vite preview on :4173
 ```

@@ -30,7 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ALLOWED_STEPS = (30, 60, 120)
+ALLOWED_STEPS = (30, 60)  # 120 min fails time-step convergence
 MIN_DATE, MAX_DATE = date(2000, 1, 1), date(2049, 12, 31)
 LIMITATIONS = (
     "Terrain horizons use LOLA elevation (5 m/pix within ~8 km, 80 m/pix "
@@ -52,6 +52,13 @@ DEFINITIONS = {
                          "vertical on a smooth sphere (ignores terrain "
                          "and the site's own elevation).",
     "azimuth": "Degrees clockwise from local true north.",
+    "near_field_sensitivity": "Same calculation with terrain within "
+                              "200 m ignored. A what-if sensitivity, not a "
+                              "statistical uncertainty interval.",
+    "search_distance": "Terrain is searched to 250 km; extending to "
+                       "300 km changes no horizon value (a convergence "
+                       "test of search distance, not proof of overall "
+                       "accuracy).",
 }
 
 _pool = ThreadPoolExecutor(max_workers=2)
@@ -70,14 +77,43 @@ def home():
     return {"message": "Lunaris NASA backend is running", "docs": "/docs"}
 
 
+API_VERSION = 2
+
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "api_version": API_VERSION}
 
 
 @app.get("/api/sites")
 def sites():
-    return list_sites()
+    return {"api_version": API_VERSION, **list_sites()}
+
+
+@app.get("/api/timeline", deprecated=True)
+def legacy_timeline(lat: float = Query(..., ge=-90, le=90),
+                    lon: float = Query(..., ge=-180, le=360),
+                    day: date = Query(...)):
+    """API v1 shape used by the previously deployed frontend: 13 samples
+    at 2 h steps for one UTC day. Kept so a backend-first deployment does
+    not break the live site; remove once the v2 frontend is deployed."""
+    if not (MIN_DATE <= day <= MAX_DATE):
+        raise HTTPException(400, "day out of range")
+    try:
+        out = {}
+        for body in ("sun", "earth"):
+            times, az, el = fetch_series(body, round(lat, 4), round(lon, 4),
+                                         day.isoformat(), 1, 120)
+            out[body] = [
+                {"time_utc": iso(t), "azimuth_deg": a, "elevation_deg": e,
+                 "above_geometric_horizon": e > 0, "hour": i * 2}
+                for i, (t, a, e) in enumerate(zip(times, az, el))
+            ]
+    except HorizonsError as exc:
+        raise HTTPException(502, str(exc))
+    return {"latitude": lat, "longitude": lon, "date": day.isoformat(),
+            "step_hours": 2, **out, "source": "NASA JPL Horizons",
+            "limitations": "Geometric horizon only (legacy v1 endpoint)."}
 
 
 def clearance(az, el, profile, step):
@@ -113,7 +149,10 @@ def analysis(
 ):
     asset = load_site(site)
     if asset is None:
-        raise HTTPException(404, f"Unknown or unvalidated site '{site}'")
+        unsupported = list_sites()["unsupported"]
+        if site in unsupported:
+            raise HTTPException(404, f"Site not available: {unsupported[site]}")
+        raise HTTPException(404, "Unknown site")
     if height not in asset["heights_m"]:
         raise HTTPException(
             400, f"height must be one of {asset['heights_m']} metres"
@@ -188,6 +227,7 @@ def analysis(
             "geometric": geometric,
             "terrain_far_field": {
                 "sun_up_pct": far_m["sun_up_pct"],
+                "mean_sun_disk_pct": mean_disk(sun_c_far),
                 "earth_visible_pct": far_m["earth_visible_pct"],
                 "far_field_m": asset["coverage"]["far_field_m"],
             },
@@ -201,6 +241,7 @@ def analysis(
             "full_deg": full[::k],
             "far_field_deg": far[::k],
         },
+        "api_version": API_VERSION,
         "definitions": DEFINITIONS,
         "source": "NASA JPL Horizons observer ephemeris (CENTER=coord@301, "
                   "MOON_ME DE421); terrain from LRO LOLA (NASA PGDA, PDS)",

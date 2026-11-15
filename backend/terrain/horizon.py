@@ -33,9 +33,10 @@ def distance_samples(fine_res, fine_reach, coarse_res, max_distance,
     near_end = min(NEAR_FIELD_PIXELS * fine_res, fine_reach)
     closest = np.arange(fine_res, near_end, fine_res * near_step_fraction)
     near = np.arange(near_end, fine_reach, fine_res * step_fraction)
-    far = np.arange(fine_reach, max_distance + 1e-6,
-                    coarse_res * step_fraction)
-    return np.concatenate([closest, near, far])
+    far = np.arange(fine_reach, max_distance, coarse_res * step_fraction)
+    # Always end exactly at max_distance so coverage can be checked
+    # against it without floating-point slack.
+    return np.concatenate([closest, near, far, [max_distance]])
 
 
 def horizon_profile(lat0, lon0, height_m, grids, azimuth_step=0.5,
@@ -118,6 +119,7 @@ def horizon_profile(lat0, lon0, height_m, grids, azimuth_step=0.5,
         (~covered).any(axis=1), np.argmax(~covered, axis=1), len(s)
     )
     reach = np.where(first_gap > 0, s[np.maximum(first_gap - 1, 0)], 0.0)
+    complete = bool((reach >= max_distance).all())
 
     return {
         "azimuth_deg": az,
@@ -127,6 +129,7 @@ def horizon_profile(lat0, lon0, height_m, grids, azimuth_step=0.5,
         "obstacle_distance_m": obstacle_m,
         "obstacle_grid": obstacle_grid,
         "coverage_m": reach,
+        "coverage_complete": complete,
         "observer_surface_m": z0,
         "observer_xy": (float(x0), float(y0)),
         "max_distance_m": max_distance,

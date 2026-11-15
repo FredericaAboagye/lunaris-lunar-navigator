@@ -60,10 +60,10 @@ const ROWS: Row[] = [
     format: pct,
   },
   {
-    label: 'Sun visible ignoring nearby ground',
-    hint: 'Terrain within 200 m excluded — shows how much the uncertain near field matters',
+    label: 'Mean solar disk, ignoring ground within 200 m',
+    hint: 'Sensitivity to the least certain nearby terrain — not an uncertainty interval',
     better: null,
-    value: e => e.data.metrics.terrain_far_field.sun_up_pct,
+    value: e => e.data.metrics.terrain_far_field.mean_sun_disk_pct,
     format: pct,
     terrainOnly: true,
   },

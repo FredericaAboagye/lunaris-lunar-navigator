@@ -22,7 +22,8 @@ export default function Summary({
     label: string,
     value: string,
     e: Entry,
-    note: string
+    note: string,
+    caveat?: string
   ) => (
     <div className="kpi" role="listitem">
       <span className="kpi__label">{label}</span>
@@ -35,6 +36,7 @@ export default function Summary({
         />
         {e.site.name} · {note}
       </span>
+      {caveat && <span className="kpi__caveat">{caveat}</span>}
     </div>
   )
 
@@ -44,7 +46,12 @@ export default function Summary({
         'Most sunlight',
         `${m(sunniest).mean_sun_disk_pct.toFixed(1)}%`,
         sunniest,
-        'mean solar disk visible'
+        'mean solar disk visible',
+        mode === 'terrain'
+          ? `${sunniest.data.metrics.terrain_far_field.mean_sun_disk_pct.toFixed(
+              1
+            )}% if ground within 200 m is ignored — a sensitivity, not an error bar`
+          : 'Smooth sphere: ignores terrain and site elevation'
       )}
       {card(
         'Shortest darkness',
