@@ -363,3 +363,131 @@ footer {
   margin-top: 12px;
   line-height: 1.7;
 }
+
+
+/* Phase 10: Interactive Lunar Map */
+
+.lunar-map-section {
+  margin: 45px 0;
+}
+
+.lunar-map-panel {
+  padding: 30px;
+}
+
+.map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
+  color: #a9bad5;
+}
+
+.map-toolbar button {
+  background: #0a1427;
+  border: 1px solid #405478;
+  border-radius: 8px;
+  color: #e6eeff;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+.map-toolbar button.active {
+  border-color: #87adff;
+  background: #28466f;
+}
+
+.lunar-map-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  gap: 30px;
+}
+
+.lunar-map-canvas {
+  width: 100%;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.lunar-map-canvas svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.lunar-map-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.marker-dot {
+  width: 12px;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #60a5fa;
+}
+
+.lunar-map-marker.marker-a .marker-dot {
+  background: #60a5fa;
+}
+
+.lunar-map-marker.marker-b .marker-dot {
+  background: #c084fc;
+}
+
+.lunar-map-marker:hover,
+.lunar-map-marker:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+  z-index: 5;
+}
+
+.lunar-map-sidebar h3 {
+  margin-bottom: 20px;
+}
+
+.map-site-button {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  padding: 17px;
+  margin-bottom: 12px;
+  background: #0b1529;
+  color: #e6eeff;
+  border: 1px solid #293957;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.map-site-button:hover {
+  border-color: #87adff;
+}
+
+.map-site-button small {
+  color: #9aabc9;
+}
+
+@media (max-width: 850px) {
+  .lunar-map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lunar-map-panel {
+    padding: 18px;
+  }
+}

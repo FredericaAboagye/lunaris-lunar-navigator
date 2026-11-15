@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import VisibilityCharts from './VisibilityCharts'
 import MissionWindow from './MissionWindow'
+import LunarMap from './LunarMap'
 import './App.css'
 
 
@@ -369,7 +370,7 @@ function App() {
               geometric lunar horizon
             </p>
           </div>
-
+        
           <div className="comparison-grid">
             <SiteResults
               title="SITE A"
@@ -386,6 +387,14 @@ function App() {
             />
           </div>
         </section>
+
+        <LunarMap
+          sites={sites}
+          siteA={siteA}
+          siteB={siteB}
+          setSiteA={setSiteA}
+          setSiteB={setSiteB}
+        />
 
         <VisibilityCharts
             siteA={selectedA}
