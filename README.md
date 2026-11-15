@@ -47,16 +47,16 @@ The long-term goal is to support informed decision-making through scientifically
 
 ### Completed
 
-- [x] FastAPI backend with a 7–30 day Sun/Earth analysis endpoint (NASA JPL Horizons, hourly, cached, retried).
-- [x] Interpolated illumination and communication metrics (Sun up %, Earth visible %, both, longest darkness/blackout, windows) with unit tests.
-- [x] Curated south-polar candidate sites; compare up to three at once.
-- [x] NASA Web Design System UI: KPI summary, comparison table, elevation charts, availability timeline, sky plots, time cursor, CSV export, shareable URLs.
+- [x] Sun/Earth azimuth and elevation from NASA JPL Horizons at documented lunar points, cross-checked against Skyfield + NAIF SPICE kernels (agreement ≤ 1.7″).
+- [x] Terrain horizons from LRO LOLA elevation (5 m/pix PGDA site maps + 80 m/pix PDS regional map to 250 km), including lunar curvature and observer height (1, 2, 10 m).
+- [x] Four documented sites (Barker et al. 2021 ROIs) validated end to end; see [docs/TERRAIN_VALIDATION.md](docs/TERRAIN_VALIDATION.md).
+- [x] Metrics: Sun visible %, mean solar disk visible, longest darkness, Earth visible %, longest Earth outage, Sun+Earth overlap, regional slope screening.
+- [x] NASA Web Design System UI: horizon panoramas, elevation-vs-horizon charts, visibility timeline, time cursor, terrain vs smooth-sphere toggle, CSV export.
 
 ### Next
 
-- [ ] Independently validate Horizons output (e.g. against SPICE/Skyfield).
-- [ ] Replace approximate site coordinates with LOLA-verified ones.
-- [ ] Terrain horizon masks from LOLA elevation data.
+- [ ] More documented sites (needs published points for Malapert, Haworth, Nobile).
+- [ ] Per-site uncertainty bands from the PGDA DEM "clones".
 
 ## 🛠️ Technology Stack
 
@@ -289,11 +289,21 @@ This repository is licensed under the MIT License. See [LICENSE](LICENSE).
 ## Run locally
 
 ```bash
-cd backend && pip install -r requirements-dev.txt
-python -m pytest -q tests
-uvicorn main:app --reload          # http://127.0.0.1:8000/docs
+cd backend && pip install -r requirements.txt
+uvicorn main:app --reload                 # http://127.0.0.1:8000/docs
 
-cd frontend && npm install && npm run dev   # http://localhost:5173
+cd frontend && npm install && npm run dev # http://localhost:5173
 ```
 
-Set `VITE_API_URL` for the frontend and `FRONTEND_ORIGIN` for the backend when deploying.
+Set `VITE_API_URL` for the frontend and `FRONTEND_ORIGIN` for the backend when deploying. The runtime backend only needs the small JSON assets in `backend/data/terrain/` (committed); it never downloads terrain.
+
+## Rebuild and validate terrain (offline)
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest -q tests                      # unit + API tests
+python -m terrain.build                        # downloads ~500 MB once to terrain/.cache
+python -m terrain.report                       # writes docs/TERRAIN_VALIDATION.md
+python -m terrain.check_ephemeris -89.761966 202.932803   # Horizons vs Skyfield/SPICE
+```

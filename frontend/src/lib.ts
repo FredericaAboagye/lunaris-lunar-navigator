@@ -10,6 +10,8 @@ export const DURATIONS = [
 
 export const MAX_SITES = 3
 export const DEFAULT_START = '2026-11-14'
+export const HEIGHTS = [1, 2, 10]
+export const DEFAULT_HEIGHT = 2
 
 export function fmtHours(hours: number): string {
   if (hours >= 48) return `${(hours / 24).toFixed(1)} d`
@@ -52,7 +54,9 @@ export function toCsv(
   entries: { site: Site; data: Analysis }[]
 ): string {
   const lines = [
-    'site,latitude,longitude,time_utc,sun_az_deg,sun_el_deg,earth_az_deg,earth_el_deg',
+    'site,latitude,longitude,observer_height_m,time_utc,' +
+      'sun_az_deg,sun_el_deg,sun_terrain_horizon_deg,' +
+      'earth_az_deg,earth_el_deg,earth_terrain_horizon_deg',
   ]
   for (const { site, data } of entries) {
     data.times.forEach((t, i) => {
@@ -61,11 +65,14 @@ export function toCsv(
           `"${site.name}"`,
           site.latitude,
           site.longitude,
+          data.height_m,
           t,
           data.sun.azimuth_deg[i],
           data.sun.elevation_deg[i],
+          data.sun.terrain_horizon_deg[i],
           data.earth.azimuth_deg[i],
           data.earth.elevation_deg[i],
+          data.earth.terrain_horizon_deg[i],
         ].join(',')
       )
     })

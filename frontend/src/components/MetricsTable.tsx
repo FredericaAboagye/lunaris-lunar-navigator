@@ -1,97 +1,108 @@
-import type { Analysis, Metrics, Site } from '../api'
+import type { Metrics } from '../api'
 import { fmtDeg, fmtHours } from '../lib'
-
-type Entry = { site: Site; data: Analysis; color: string }
+import type { Entry, Mode } from './types'
 
 type Row = {
-  key: keyof Metrics
   label: string
   hint: string
   better: 'high' | 'low' | null
+  value: (e: Entry, mode: Mode) => number | null
   format: (v: number) => string
+  terrainOnly?: boolean
 }
 
 const pct = (v: number) => `${v.toFixed(1)}%`
+const metric =
+  (key: keyof Metrics) => (e: Entry, mode: Mode) =>
+    e.data.metrics[mode][key] ?? null
 
 const ROWS: Row[] = [
   {
-    key: 'sun_up_pct',
-    label: 'Sun above horizon',
-    hint: 'Share of the window with direct sunlight (power)',
+    label: 'Sun visible',
+    hint: 'Share of time the Sun’s centre is above the horizon',
     better: 'high',
+    value: metric('sun_up_pct'),
     format: pct,
   },
   {
-    key: 'earth_visible_pct',
-    label: 'Earth above horizon',
-    hint: 'Share of the window with direct-to-Earth line of sight',
+    label: 'Mean solar disk visible',
+    hint: 'Average fraction of the Sun’s disk above the horizon',
     better: 'high',
+    value: metric('mean_sun_disk_pct'),
     format: pct,
   },
   {
-    key: 'both_pct',
-    label: 'Sun and Earth together',
-    hint: 'Power and direct link available simultaneously',
-    better: 'high',
-    format: pct,
-  },
-  {
-    key: 'longest_darkness_hours',
     label: 'Longest darkness',
-    hint: 'Longest continuous time without sunlight',
+    hint: 'Longest continuous time with the Sun below the horizon',
     better: 'low',
+    value: metric('longest_darkness_hours'),
     format: fmtHours,
   },
   {
-    key: 'longest_sunlit_hours',
-    label: 'Longest sunlit period',
-    hint: 'Longest continuous time with sunlight',
+    label: 'Earth visible',
+    hint: 'Share of time Earth’s centre is above the horizon',
     better: 'high',
-    format: fmtHours,
+    value: metric('earth_visible_pct'),
+    format: pct,
   },
   {
-    key: 'longest_comms_blackout_hours',
-    label: 'Longest comms blackout',
-    hint: 'Longest continuous time without Earth in view',
+    label: 'Longest Earth outage',
+    hint: 'Longest continuous time with Earth below the horizon',
     better: 'low',
+    value: metric('longest_comms_blackout_hours'),
     format: fmtHours,
   },
   {
-    key: 'longest_earth_visible_hours',
-    label: 'Longest Earth contact',
-    hint: 'Longest continuous time with Earth in view',
+    label: 'Sun and Earth together',
+    hint: 'Both above the horizon at the same time',
     better: 'high',
-    format: fmtHours,
+    value: metric('both_pct'),
+    format: pct,
   },
   {
-    key: 'earth_windows',
-    label: 'Earth contact windows',
-    hint: 'Number of separate Earth-visible intervals',
+    label: 'Sun visible ignoring nearby ground',
+    hint: 'Terrain within 200 m excluded — shows how much the uncertain near field matters',
     better: null,
-    format: v => String(v),
+    value: e => e.data.metrics.terrain_far_field.sun_up_pct,
+    format: pct,
+    terrainOnly: true,
   },
   {
-    key: 'max_sun_elevation_deg',
+    label: 'Ground within 100 m under 10° slope',
+    hint: 'Regional screening from 5 m LOLA slope, not lander certification',
+    better: 'high',
+    value: e => e.site.hazard.within_100m.pct_below_10,
+    format: pct,
+  },
+  {
+    label: '95th-percentile slope within 100 m',
+    hint: 'Steepest 5 % of 5 m pixels',
+    better: 'low',
+    value: e => e.site.hazard.within_100m.p95_deg,
+    format: v => `${v.toFixed(1)}°`,
+  },
+  {
     label: 'Peak Sun elevation',
-    hint: 'Highest Sun elevation in the window',
+    hint: 'Highest Sun elevation (above local horizontal)',
     better: null,
-    format: v => fmtDeg(v),
-  },
-  {
-    key: 'max_earth_elevation_deg',
-    label: 'Peak Earth elevation',
-    hint: 'Highest Earth elevation in the window',
-    better: null,
+    value: e => e.data.metrics.geometric.max_sun_elevation_deg ?? null,
     format: v => fmtDeg(v),
   },
 ]
 
-export default function MetricsTable({ entries }: { entries: Entry[] }) {
+export default function MetricsTable({
+  entries,
+  mode,
+}: {
+  entries: Entry[]
+  mode: Mode
+}) {
+  const rows = ROWS.filter(r => mode === 'terrain' || !r.terrainOnly)
   return (
     <div className="table-scroll">
       <table className="usa-table usa-table--borderless metrics-table">
         <caption className="usa-sr-only">
-          Illumination and communication metrics by site
+          Sunlight, Earth visibility and slope by site
         </caption>
         <thead>
           <tr>
@@ -109,17 +120,18 @@ export default function MetricsTable({ entries }: { entries: Entry[] }) {
           </tr>
         </thead>
         <tbody>
-          {ROWS.map(row => {
-            const values = entries.map(e => e.data.metrics[row.key])
+          {rows.map(row => {
+            const values = entries.map(e => row.value(e, mode))
+            const nums = values.filter((v): v is number => v !== null)
             const best =
               row.better === 'high'
-                ? Math.max(...values)
+                ? Math.max(...nums)
                 : row.better === 'low'
-                  ? Math.min(...values)
+                  ? Math.min(...nums)
                   : null
-            const distinct = new Set(values).size > 1
+            const distinct = new Set(nums).size > 1
             return (
-              <tr key={row.key}>
+              <tr key={row.label}>
                 <th scope="row">
                   {row.label}
                   <span className="row-hint">{row.hint}</span>
@@ -131,7 +143,7 @@ export default function MetricsTable({ entries }: { entries: Entry[] }) {
                       distinct && best === v ? 'is-best' : undefined
                     }
                   >
-                    {row.format(v)}
+                    {v === null ? '—' : row.format(v)}
                   </td>
                 ))}
               </tr>

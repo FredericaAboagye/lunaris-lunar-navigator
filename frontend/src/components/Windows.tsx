@@ -1,7 +1,5 @@
-import type { Analysis, Site } from '../api'
 import { fmtHours, fmtUtc } from '../lib'
-
-type Entry = { site: Site; data: Analysis; color: string }
+import type { Entry, Mode } from './types'
 
 function complementWindows(
   windows: { start: string; end: string }[],
@@ -21,28 +19,35 @@ function complementWindows(
   return gaps
 }
 
-export default function Windows({ entries }: { entries: Entry[] }) {
+export default function Windows({
+  entries,
+  mode,
+}: {
+  entries: Entry[]
+  mode: Mode
+}) {
   return (
     <div className="windows-grid">
       {entries.map(({ site, data, color }) => {
+        const w = data.windows[mode]
         const dark = complementWindows(
-          data.windows.sun,
+          w.sun,
           data.start,
           data.days
         )
         const blackout = complementWindows(
-          data.windows.earth,
+          w.earth,
           data.start,
           data.days
         )
         const rows = [
-          ...data.windows.earth.map(w => ({
-            kind: 'Earth contact',
-            start: Date.parse(w.start),
-            end: Date.parse(w.end),
+          ...w.earth.map(x => ({
+            kind: 'Earth visible',
+            start: Date.parse(x.start),
+            end: Date.parse(x.end),
           })),
-          ...blackout.map(w => ({ kind: 'Comms blackout', ...w })),
-          ...dark.map(w => ({ kind: 'Darkness', ...w })),
+          ...blackout.map(x => ({ kind: 'Earth outage', ...x })),
+          ...dark.map(x => ({ kind: 'Darkness', ...x })),
         ].sort((a, b) => a.start - b.start)
 
         return (

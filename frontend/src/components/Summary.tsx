@@ -1,56 +1,63 @@
-import type { Analysis, Site } from '../api'
 import { fmtHours } from '../lib'
+import type { Entry, Mode } from './types'
 
-type Entry = { site: Site; data: Analysis; color: string }
-
-export default function Summary({ entries }: { entries: Entry[] }) {
+export default function Summary({
+  entries,
+  mode,
+}: {
+  entries: Entry[]
+  mode: Mode
+}) {
   if (entries.length === 0) return null
-  const best = [...entries].sort(
-    (a, b) => b.data.metrics.both_pct - a.data.metrics.both_pct
+  const m = (e: Entry) => e.data.metrics[mode]
+  const best = [...entries].sort((a, b) => m(b).both_pct - m(a).both_pct)[0]
+  const sunniest = [...entries].sort(
+    (a, b) => m(b).mean_sun_disk_pct - m(a).mean_sun_disk_pct
   )[0]
-  const m = best.data.metrics
-  const longestDark = [...entries].sort(
-    (a, b) =>
-      a.data.metrics.longest_darkness_hours -
-      b.data.metrics.longest_darkness_hours
+  const shortestDark = [...entries].sort(
+    (a, b) => m(a).longest_darkness_hours - m(b).longest_darkness_hours
   )[0]
+
+  const card = (
+    label: string,
+    value: string,
+    e: Entry,
+    note: string
+  ) => (
+    <div className="kpi" role="listitem">
+      <span className="kpi__label">{label}</span>
+      <strong className="kpi__value">{value}</strong>
+      <span className="kpi__sub">
+        <i
+          className="swatch"
+          style={{ background: e.color }}
+          aria-hidden="true"
+        />
+        {e.site.name} · {note}
+      </span>
+    </div>
+  )
 
   return (
     <div className="kpis" role="list">
-      <div className="kpi" role="listitem">
-        <span className="kpi__label">Best joint availability</span>
-        <strong className="kpi__value">{m.both_pct.toFixed(1)}%</strong>
-        <span className="kpi__sub">
-          <i
-            className="swatch"
-            style={{ background: best.color }}
-            aria-hidden="true"
-          />
-          {best.site.name} · Sun and Earth both above the horizon
-        </span>
-      </div>
-      <div className="kpi" role="listitem">
-        <span className="kpi__label">Shortest power outage</span>
-        <strong className="kpi__value">
-          {fmtHours(longestDark.data.metrics.longest_darkness_hours)}
-        </strong>
-        <span className="kpi__sub">
-          <i
-            className="swatch"
-            style={{ background: longestDark.color }}
-            aria-hidden="true"
-          />
-          {longestDark.site.name} · longest continuous darkness
-        </span>
-      </div>
-      <div className="kpi" role="listitem">
-        <span className="kpi__label">Sites compared</span>
-        <strong className="kpi__value">{entries.length}</strong>
-        <span className="kpi__sub">
-          {entries[0].data.days}-day window from{' '}
-          {entries[0].data.start.slice(0, 10)}
-        </span>
-      </div>
+      {card(
+        'Most sunlight',
+        `${m(sunniest).mean_sun_disk_pct.toFixed(1)}%`,
+        sunniest,
+        'mean solar disk visible'
+      )}
+      {card(
+        'Shortest darkness',
+        fmtHours(m(shortestDark).longest_darkness_hours),
+        shortestDark,
+        'longest Sun-below-horizon stretch'
+      )}
+      {card(
+        'Best Sun + Earth overlap',
+        `${m(best).both_pct.toFixed(1)}%`,
+        best,
+        'both above the horizon'
+      )}
     </div>
   )
 }

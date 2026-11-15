@@ -1,0 +1,5 @@
+# Offline terrain preprocessing only (python -m terrain.build).
+-r requirements.txt
+numpy
+tifffile
+pyshp

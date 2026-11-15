@@ -1,18 +1,52 @@
 export const API_URL: string =
   import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
+export type HazardDisc = {
+  pixels: number
+  median_deg: number
+  p95_deg: number
+  max_deg: number
+  pct_below_5: number
+  pct_below_10: number
+  pct_below_15: number
+}
+
 export type Site = {
   id: string
   name: string
+  region: string
   latitude: number
   longitude: number
-  region: string
-  note: string
+  point_source: string
+  surface_height_m: number
+  heights_m: number[]
+  coverage: {
+    terrain_search_km: number
+    min_terrain_coverage_km: number
+    complete: boolean
+    local_dem: string
+    regional_dem: string
+    far_field_m: number
+  }
+  hazard: {
+    source: string
+    slope_rms_error_deg: string
+    within_100m: HazardDisc
+    within_500m: HazardDisc
+  }
+  validation: {
+    passed: boolean
+    published_check: {
+      reference: string
+      our_mean_solar_disk_fraction_1m: number
+      pass: boolean
+    }
+  }
 }
 
-export type Series = {
-  azimuth_deg: number[]
-  elevation_deg: number[]
+export type SitesResponse = {
+  sites: Site[]
+  unsupported: Record<string, string>
 }
 
 export type Metrics = {
@@ -26,23 +60,48 @@ export type Metrics = {
   longest_comms_blackout_hours: number
   sun_windows: number
   earth_windows: number
-  max_sun_elevation_deg: number
-  max_earth_elevation_deg: number
+  max_sun_elevation_deg?: number
+  max_earth_elevation_deg?: number
+  max_sun_clearance_deg?: number
+  max_earth_clearance_deg?: number
+  mean_sun_disk_pct: number
 }
 
 export type Window = { start: string; end: string; hours: number }
+export type Windows = { sun: Window[]; earth: Window[]; both: Window[] }
+export type Mode = 'terrain' | 'geometric'
+
+export type Body = {
+  azimuth_deg: number[]
+  elevation_deg: number[]
+  terrain_horizon_deg: number[]
+}
 
 export type Analysis = {
-  latitude: number
-  longitude: number
+  site: Site
+  height_m: number
   start: string
   days: number
   step_minutes: number
   times: string[]
-  sun: Series
-  earth: Series
-  metrics: Metrics
-  windows: { sun: Window[]; earth: Window[]; both: Window[] }
+  sun: Body
+  earth: Body
+  metrics: {
+    terrain: Metrics
+    geometric: Metrics
+    terrain_far_field: {
+      sun_up_pct: number
+      earth_visible_pct: number
+      far_field_m: number
+    }
+  }
+  windows: Record<Mode, Windows>
+  horizon_profile: {
+    azimuth_deg: number[]
+    full_deg: number[]
+    far_field_deg: number[]
+  }
+  definitions: Record<string, string>
   source: string
   generated_at: string
   limitations: string
@@ -69,27 +128,26 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export function fetchSites(signal?: AbortSignal) {
-  return getJson<{ sites: Site[] }>('/api/sites', signal)
+  return getJson<SitesResponse>('/api/sites', signal)
 }
 
 const cache = new Map<string, Promise<Analysis>>()
 
 export function fetchAnalysis(
-  site: Site,
+  siteId: string,
   start: string,
-  days: number
+  days: number,
+  height: number
 ): Promise<Analysis> {
-  const params = new URLSearchParams({
-    lat: String(site.latitude),
-    lon: String(site.longitude),
+  const key = new URLSearchParams({
+    site: siteId,
     start,
     days: String(days),
+    height: String(height),
     step: '60',
-  })
-  const key = params.toString()
+  }).toString()
   let hit = cache.get(key)
   if (!hit) {
-    // Cached request is not tied to one component's abort signal.
     hit = getJson<Analysis>(`/api/analysis?${key}`)
     hit.catch(() => cache.delete(key))
     cache.set(key, hit)

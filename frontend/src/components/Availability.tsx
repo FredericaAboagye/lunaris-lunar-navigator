@@ -1,7 +1,5 @@
-import type { Analysis, Site } from '../api'
 import { fmtDay } from '../lib'
-
-type Entry = { site: Site; data: Analysis; color: string }
+import type { Entry, Mode } from './types'
 
 const SUN = '#d9a400'
 const EARTH = '#1a5f9e'
@@ -55,9 +53,11 @@ function Strip({
 export default function Availability({
   entries,
   cursorIndex,
+  mode,
 }: {
   entries: Entry[]
   cursorIndex: number
+  mode: Mode
 }) {
   const startMs = Date.parse(entries[0].data.start)
   const days = entries[0].data.days
@@ -72,14 +72,14 @@ export default function Availability({
   return (
     <div className="availability">
       <div className="legend-row" aria-hidden="true">
-        <span><i style={{ background: SUN }} />Sun up</span>
-        <span><i style={{ background: EARTH }} />Earth up</span>
+        <span><i style={{ background: SUN }} />Sun visible</span>
+        <span><i style={{ background: EARTH }} />Earth visible</span>
         <span><i style={{ background: BOTH }} />Both</span>
         <span><i style={{ background: OFF }} />Not available</span>
       </div>
       {entries.map(e => {
         const conv = (k: 'sun' | 'earth' | 'both') =>
-          e.data.windows[k].map(w => ({
+          e.data.windows[mode][k].map(w => ({
             s: toHours(w.start),
             e: toHours(w.end),
           }))
@@ -93,9 +93,9 @@ export default function Availability({
               />
               {e.site.name}
             </h4>
-            <Strip label="Power" intervals={conv('sun')} total={total}
+            <Strip label="Sun" intervals={conv('sun')} total={total}
               color={SUN} cursorPct={cursorPct} />
-            <Strip label="Comms" intervals={conv('earth')} total={total}
+            <Strip label="Earth" intervals={conv('earth')} total={total}
               color={EARTH} cursorPct={cursorPct} />
             <Strip label="Both" intervals={conv('both')} total={total}
               color={BOTH} cursorPct={cursorPct} />

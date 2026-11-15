@@ -1,0 +1,38 @@
+{
+  "sites": {
+    "site04": {
+      "name": "Shackleton Rim",
+      "region": "Rim of Shackleton crater",
+      "latitude": -89.761966,
+      "longitude": 202.932803,
+      "validated": true
+    },
+    "site01": {
+      "name": "Connecting Ridge",
+      "region": "Shackleton\u2013de Gerlache connecting ridge",
+      "latitude": -89.438926,
+      "longitude": 222.904022,
+      "validated": true
+    },
+    "site07": {
+      "name": "Peak near Shackleton",
+      "region": "Massif near Shackleton crater",
+      "latitude": -88.806363,
+      "longitude": 123.546288,
+      "validated": true
+    },
+    "site11": {
+      "name": "de Gerlache Rim",
+      "region": "Rim of de Gerlache crater",
+      "latitude": -88.668256,
+      "longitude": 291.624236,
+      "validated": true
+    }
+  },
+  "unsupported": {
+    "site06": "Nobile Rim 1: PGDA DEM exists but its ROI archive could not be opened, so no documented point is available.",
+    "site23": "Malapert Massif: PGDA DEM exists but no ROI/point is published.",
+    "haworth": "Haworth: PGDA DEM exists but no ROI/point is published."
+  },
+  "generated_at": "2026-11-15T05:09:23.746604+00:00"
+}

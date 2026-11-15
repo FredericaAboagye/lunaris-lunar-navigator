@@ -3,18 +3,21 @@ import {
   fetchAnalysis,
   fetchSites,
   type Analysis,
+  type Mode,
   type Site,
 } from './api'
 import Availability from './components/Availability'
 import Controls from './components/Controls'
 import ElevationChart from './components/ElevationChart'
 import MetricsTable from './components/MetricsTable'
-import SkyPlot from './components/SkyPlot'
+import Panorama from './components/Panorama'
 import Summary from './components/Summary'
 import Windows from './components/Windows'
 import {
+  DEFAULT_HEIGHT,
   DEFAULT_START,
   DURATIONS,
+  HEIGHTS,
   MAX_SITES,
   SITE_COLORS,
   downloadText,
@@ -23,29 +26,30 @@ import {
   toCsv,
 } from './lib'
 
-const DEFAULT_SITES = ['malapert', 'shackleton', 'haworth']
+const DEFAULT_SITES = ['site04', 'site01', 'site11']
 
 function readUrl() {
   const q = new URLSearchParams(window.location.search)
   const days = Number(q.get('days'))
+  const height = Number(q.get('height'))
   const start = q.get('start') || ''
   return {
     sites: q.get('sites')?.split(',').filter(Boolean) ?? DEFAULT_SITES,
     start: /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : DEFAULT_START,
     days: DURATIONS.some(d => d.days === days) ? days : 30,
+    height: HEIGHTS.includes(height) ? height : DEFAULT_HEIGHT,
+    mode: (q.get('model') === 'geometric' ? 'geometric' : 'terrain') as Mode,
   }
 }
 
 function Accordion({
   title,
   children,
-  defaultOpen = false,
 }: {
   title: string
   children: React.ReactNode
-  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(defaultOpen)
+  const [open, setOpen] = useState(false)
   return (
     <div className="usa-accordion usa-accordion--bordered">
       <h3 className="usa-accordion__heading">
@@ -68,9 +72,12 @@ function Accordion({
 function App() {
   const initial = useMemo(readUrl, [])
   const [catalog, setCatalog] = useState<Site[]>([])
+  const [unsupported, setUnsupported] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<string[]>(initial.sites)
   const [start, setStart] = useState(initial.start)
   const [days, setDays] = useState(initial.days)
+  const [height, setHeight] = useState(initial.height)
+  const [mode, setMode] = useState<Mode>(initial.mode)
 
   const [results, setResults] = useState<Record<string, Analysis>>({})
   const [loading, setLoading] = useState(true)
@@ -83,14 +90,13 @@ function App() {
     fetchSites(controller.signal)
       .then(r => {
         setCatalog(r.sites)
+        setUnsupported(r.unsupported)
         setSelected(prev => {
-          const valid = prev.filter(id =>
+          const valid = prev.filter(id => r.sites.some(s => s.id === id))
+          const fallback = DEFAULT_SITES.filter(id =>
             r.sites.some(s => s.id === id)
           )
-          return (valid.length ? valid : DEFAULT_SITES).slice(
-            0,
-            MAX_SITES
-          )
+          return (valid.length ? valid : fallback).slice(0, MAX_SITES)
         })
       })
       .catch(err => {
@@ -109,21 +115,15 @@ function App() {
     let cancelled = false
     setLoading(true)
     setError('')
-
-    const chosen = selected
-      .map(id => catalog.find(s => s.id === id))
-      .filter((s): s is Site => Boolean(s))
-
     Promise.all(
-      chosen.map(async site => [
-        site.id,
-        await fetchAnalysis(site, start, days),
-      ] as const)
+      selected.map(
+        async id => [id, await fetchAnalysis(id, start, days, height)] as const
+      )
     )
       .then(pairs => {
         if (cancelled) return
         setResults(Object.fromEntries(pairs))
-        setCursor(c => Math.min(c, pairs[0]?.[1].times.length - 1 || 0))
+        setCursor(c => Math.min(c, (pairs[0]?.[1].times.length ?? 1) - 1))
         setLoading(false)
       })
       .catch(err => {
@@ -131,27 +131,28 @@ function App() {
         setError(err instanceof Error ? err.message : String(err))
         setLoading(false)
       })
-
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, key, start, days, retry])
+  }, [catalog, key, start, days, height, retry])
 
   useEffect(() => {
     const q = new URLSearchParams({
       sites: key,
       start,
       days: String(days),
+      height: String(height),
+      model: mode,
     })
     window.history.replaceState(null, '', `?${q}`)
-  }, [key, start, days])
+  }, [key, start, days, height, mode])
 
   const entries = selected
     .map((id, i) => {
       const site = catalog.find(s => s.id === id)
       const data = results[id]
-      return site && data
+      return site && data && data.height_m === height
         ? { site, data, color: SITE_COLORS[i] }
         : null
     })
@@ -159,6 +160,7 @@ function App() {
 
   const ready = !loading && !error && entries.length === selected.length
   const times = entries[0]?.data.times ?? []
+  const terrain = mode === 'terrain'
 
   function toggleSite(id: string) {
     setSelected(prev =>
@@ -198,12 +200,11 @@ function App() {
       <section className="hero">
         <div className="container">
           <p className="eyebrow">Lunar south pole · mission planning</p>
-          <h1>Compare landing sites by sunlight and Earth contact.</h1>
+          <h1>See when each site has sunlight and a view of Earth.</h1>
           <p className="lead">
-            Pick candidate sites and a start date. Lunaris pulls Sun and
-            Earth positions from NASA JPL Horizons and shows when each
-            site has power, when it can talk to Earth, and when it has
-            both.
+            Sun and Earth positions from NASA JPL Horizons, checked against
+            the real terrain horizon from LRO laser altimetry, for
+            documented candidate sites near the lunar south pole.
           </p>
         </div>
       </section>
@@ -213,12 +214,17 @@ function App() {
           <h2>Configure</h2>
           <Controls
             sites={catalog}
+            unsupported={unsupported}
             selected={selected}
             onToggle={toggleSite}
             start={start}
             onStart={setStart}
             days={days}
             onDays={setDays}
+            height={height}
+            onHeight={setHeight}
+            mode={mode}
+            onMode={setMode}
           />
           <button
             type="button"
@@ -226,7 +232,7 @@ function App() {
             disabled={!ready}
             onClick={() =>
               downloadText(
-                `lunaris-${start}-${days}d.csv`,
+                `lunaris-${start}-${days}d-${height}m.csv`,
                 toCsv(entries)
               )
             }
@@ -266,25 +272,31 @@ function App() {
 
           {entries.length > 0 && !error && (
             <div className={loading ? 'is-stale' : undefined}>
-              <Summary entries={entries} />
+              <Summary entries={entries} mode={mode} />
 
               <section className="block">
                 <h2>Site comparison</h2>
                 <p className="muted">
                   {entries[0].data.days} days from{' '}
-                  {entries[0].data.start.slice(0, 10)} UTC · highlighted
-                  values are best in row · geometric horizon
+                  {entries[0].data.start.slice(0, 10)} UTC · observer{' '}
+                  {height} m above the ground ·{' '}
+                  {terrain
+                    ? 'LOLA terrain horizon'
+                    : 'smooth-sphere horizon (0°)'}{' '}
+                  · best value per row highlighted
                 </p>
-                <div className="usa-alert usa-alert--warning usa-alert--slim">
-                  <div className="usa-alert__body">
-                    <p className="usa-alert__text">
-                      Smooth-sphere model: terrain is not included, so
-                      crater rims and ridges look sunnier than they are
-                      in reality. Use for shortlisting only.
-                    </p>
+                {!terrain && (
+                  <div className="usa-alert usa-alert--warning usa-alert--slim">
+                    <div className="usa-alert__body">
+                      <p className="usa-alert__text">
+                        Smooth-sphere mode ignores terrain and the site’s
+                        own elevation. It is shown for comparison only;
+                        switch to LOLA terrain for planning.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <MetricsTable entries={entries} />
+                )}
+                <MetricsTable entries={entries} mode={mode} />
                 <ul className="site-notes">
                   {entries.map(e => (
                     <li key={e.site.id}>
@@ -295,7 +307,8 @@ function App() {
                       />
                       <strong>{e.site.name}</strong>{' '}
                       <span className="muted">
-                        {fmtLat(e.site)} — {e.site.note}
+                        {fmtLat(e.site)} — {e.site.region}. Point:{' '}
+                        {e.site.point_source}.
                       </span>
                     </li>
                   ))}
@@ -319,71 +332,109 @@ function App() {
               </div>
 
               <section className="block">
-                <h2>Elevation above the horizon</h2>
+                <h2>Horizon view</h2>
                 <p className="muted">
-                  Above 0° the body is visible. Shaded band is below the
-                  horizon. The red line is the time cursor.
+                  Looking all the way around from each site. The dark
+                  shape is the {terrain ? 'terrain horizon' : 'flat horizon'};
+                  lines trace the Sun and Earth over the whole window; discs
+                  show them at the cursor time, drawn to scale.
+                  {terrain &&
+                    ' The dashed white line ignores ground within 200 m.'}
                 </p>
-                <h3>Sun (power)</h3>
-                <ElevationChart
-                  entries={entries}
-                  body="sun"
-                  cursorIndex={cursor}
-                />
-                <h3>Earth (direct-to-Earth link)</h3>
-                <ElevationChart
-                  entries={entries}
-                  body="earth"
-                  cursorIndex={cursor}
-                />
-              </section>
-
-              <section className="block">
-                <h2>Availability timeline</h2>
-                <Availability entries={entries} cursorIndex={cursor} />
-              </section>
-
-              <section className="block">
-                <h2>Sky view at cursor time</h2>
-                <p className="muted">
-                  Looking up from each site: north at top, horizon at the
-                  bold ring, rings every 10° of elevation. Faint lines
-                  trace the paths over the whole window.
-                </p>
-                <div className="sky-grid">
+                <div className="panorama-grid">
                   {entries.map(e => (
-                    <SkyPlot
+                    <Panorama
                       key={e.site.id}
-                      site={e.site}
-                      data={e.data}
-                      color={e.color}
+                      entry={e}
                       cursorIndex={cursor}
+                      mode={mode}
                     />
                   ))}
                 </div>
               </section>
 
               <section className="block">
-                <Accordion title="Event windows (Earth contact, blackouts, darkness)">
-                  <Windows entries={entries} />
+                <h2>Elevation over time</h2>
+                <p className="muted">
+                  Solid lines are the body’s elevation.{' '}
+                  {terrain
+                    ? 'Dashed lines in the same colour are the terrain horizon in that direction — the body is visible while the solid line is above its dashed line.'
+                    : 'The body is visible while its line is above 0°.'}
+                </p>
+                <h3>Sun</h3>
+                <ElevationChart entries={entries} body="sun"
+                  cursorIndex={cursor} mode={mode} />
+                <h3>Earth</h3>
+                <ElevationChart entries={entries} body="earth"
+                  cursorIndex={cursor} mode={mode} />
+              </section>
+
+              <section className="block">
+                <h2>Visibility timeline</h2>
+                <Availability entries={entries} cursorIndex={cursor}
+                  mode={mode} />
+              </section>
+
+              <section className="block">
+                <Accordion title="Event windows (Earth visible, Earth outages, darkness)">
+                  <Windows entries={entries} mode={mode} />
                 </Accordion>
-                <Accordion title="Method, data source and limitations">
-                  <p>
-                    Positions come from the NASA JPL Horizons observer
-                    ephemeris, computed for a point on the lunar surface
-                    (<code>CENTER=coord@301</code>) at one-hour steps in
-                    UTC. Window edges are interpolated between samples.
-                  </p>
+                <Accordion title="Definitions, data and limitations">
+                  <h4>What the numbers mean</h4>
+                  <ul>
+                    <li>
+                      <strong>Visible</strong> means the body’s centre is
+                      above the horizon. <em>Mean solar disk visible</em>{' '}
+                      also counts a partly hidden Sun.
+                    </li>
+                    <li>
+                      <strong>Terrain horizon</strong> is the highest
+                      ground in each direction from LOLA laser altimetry,
+                      including lunar curvature, out to 250 km.{' '}
+                      <strong>Smooth sphere</strong> uses 0° and ignores
+                      terrain.
+                    </li>
+                    <li>
+                      <strong>Sun visible is not power generated</strong>:
+                      panel orientation, efficiency and dust are not
+                      modelled.
+                    </li>
+                    <li>
+                      <strong>Earth visible is not a guaranteed radio
+                      link</strong>: antennas, link margins and ground
+                      station schedules are not modelled.
+                    </li>
+                    <li>
+                      <strong>Slope statistics are regional
+                      screening</strong>, not lander-scale hazard
+                      certification.
+                    </li>
+                  </ul>
+                  <h4>Data and validation</h4>
+                  <ul>
+                    {entries.map(e => (
+                      <li key={e.site.id}>
+                        <strong>{e.site.name}</strong>:{' '}
+                        {e.site.coverage.local_dem}, plus{' '}
+                        {e.site.coverage.regional_dem}; terrain searched
+                        to {e.site.coverage.terrain_search_km} km
+                        {e.site.coverage.complete
+                          ? ' with full coverage'
+                          : ' — coverage incomplete'}
+                        . Validation{' '}
+                        {e.site.validation.passed ? 'passed' : 'failed'}:
+                        mean illumination at 1 m, 2024–2025 ={' '}
+                        {(
+                          e.site.validation.published_check
+                            .our_mean_solar_disk_fraction_1m * 100
+                        ).toFixed(1)}
+                        % vs &gt; 70 % published (Barker et al. 2021).
+                      </li>
+                    ))}
+                  </ul>
                   <p>{entries[0].data.limitations}</p>
-                  <p>
-                    Site coordinates are approximate feature locations
-                    for comparison and are not surveyed landing-site
-                    coordinates. Real illumination at the poles depends
-                    strongly on terrain, so use these results to
-                    shortlist, not to certify.
-                  </p>
                   <p className="muted">
-                    Source: {entries[0].data.source}. Data generated{' '}
+                    Source: {entries[0].data.source}. Generated{' '}
                     {fmtUtc(entries[0].data.generated_at)} UTC.
                   </p>
                 </Accordion>
@@ -397,8 +448,9 @@ function App() {
         <div className="container">
           <p>
             Lunaris · Team Pitzer Connect · NASA Space Apps Challenge
-            2026. Built with the NASA Web Design System. This is a
-            hackathon project and not an official NASA product.
+            2026. Built with the NASA Web Design System using NASA JPL
+            Horizons and LRO LOLA data. This is a hackathon project and not
+            an official NASA product.
           </p>
         </div>
       </footer>

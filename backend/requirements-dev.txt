@@ -1,3 +1,5 @@
--r requirements.txt
+-r requirements-pipeline.txt
 pytest
 httpx
+pyproj
+skyfield

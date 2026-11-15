@@ -391,28 +391,7 @@ body {
   color: hsl(var(--muted-foreground));
 }
 
-/* Sky plots */
-.sky-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-  gap: 1.5rem;
-}
-.sky {
-  margin: 0;
-  padding: 1rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: var(--radius);
-}
-.sky figcaption {
-  font-weight: 700;
-  font-size: 0.95rem;
-  margin-bottom: 0.5rem;
-}
-.sky svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
+/* Readouts */
 .sky__readout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -490,4 +469,42 @@ body {
 
 .block .usa-alert {
   margin-bottom: 1.25rem;
+}
+
+/* Horizon panoramas */
+.panorama-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+.panorama {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+.panorama figcaption {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.panorama__scroll {
+  overflow-x: auto;
+}
+.panorama svg {
+  display: block;
+  width: 100%;
+  min-width: 32rem;
+  height: auto;
+}
+.unsupported {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+.unsupported ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+.usa-prose h4 {
+  margin: 1rem 0 0.25rem;
 }

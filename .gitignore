@@ -245,3 +245,7 @@ pnpm-debug.log*
 
 # Local editor settings
 .vscode/
+# Terrain source data cache (large, re-downloadable)
+backend/terrain/.cache/
+__pycache__/
+.pytest_cache/
