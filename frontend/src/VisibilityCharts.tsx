@@ -122,8 +122,16 @@ function ElevationGraph({
       <h2>{title}</h2>
       <p className="muted">{description}</p>
 
-      <div className="chart-container">
-        <ResponsiveContainer width="100%" height="100%">
+      <div
+        className="chart-container"
+        style={{
+            width: '100%',
+            height: '360px',
+            minHeight: '360px',
+            position: 'relative',
+        }}
+    >
+  <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 20, right: 22, left: 0, bottom: 12 }}
