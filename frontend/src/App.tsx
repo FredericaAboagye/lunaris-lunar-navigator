@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 type Site = {
+  id: string
   name: string
   latitude: number
   longitude: number
@@ -27,68 +28,185 @@ type Conditions = {
 
 const sites: Site[] = [
   {
+    id: 'alpha',
     name: 'South Polar Test Site',
     latitude: -89.5,
     longitude: 0,
   },
   {
-    name: 'Lunar South Pole',
-    latitude: -90,
-    longitude: 0,
-  },
-  {
-    name: 'Second Test Site',
+    id: 'beta',
+    name: 'Test Site Beta',
     latitude: -89,
     longitude: 45,
   },
+  {
+    id: 'gamma',
+    name: 'Test Site Gamma',
+    latitude: -88.5,
+    longitude: 90,
+  },
 ]
 
+const API_URL = 'http://127.0.0.1:8000'
+
+function formatAngle(value: number) {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(3)}°`
+}
+
+async function getConditions(
+  site: Site,
+  date: string,
+  signal: AbortSignal
+): Promise<Conditions> {
+  const params = new URLSearchParams({
+    lat: String(site.latitude),
+    lon: String(site.longitude),
+    day: date,
+  })
+
+  const response = await fetch(
+    `${API_URL}/api/conditions?${params}`,
+    { signal }
+  )
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(
+      body?.detail || `NASA API error: ${response.status}`
+    )
+  }
+
+  return response.json()
+}
+
+function SiteResults({
+  title,
+  site,
+  data,
+  loading,
+}: {
+  title: string
+  site: Site
+  data: Conditions | null
+  loading: boolean
+}) {
+  return (
+    <div className="comparison-card">
+      <div className="site-heading">
+        <span className="site-label">{title}</span>
+        <h3>{site.name}</h3>
+        <p>
+          {site.latitude}° latitude · {site.longitude}° longitude
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="muted">Loading NASA data...</p>
+      ) : !data ? (
+        <p className="muted">Measurements unavailable.</p>
+      ) : (
+        <>
+          <div className="metric">
+            <span>☀ Sun Elevation</span>
+            <strong>{formatAngle(data.sun.elevation_deg)}</strong>
+          </div>
+
+          <div className="metric">
+            <span>☀ Sun Azimuth</span>
+            <strong>{formatAngle(data.sun.azimuth_deg)}</strong>
+          </div>
+
+          <div className="metric">
+            <span>🌍 Earth Elevation</span>
+            <strong>{formatAngle(data.earth.elevation_deg)}</strong>
+          </div>
+
+          <div className="metric">
+            <span>🌍 Earth Azimuth</span>
+            <strong>{formatAngle(data.earth.azimuth_deg)}</strong>
+          </div>
+
+          <div className="visibility-row">
+            <span>Sun above horizon</span>
+            <span
+              className={
+                data.sun.above_geometric_horizon
+                  ? 'status-positive'
+                  : 'status-negative'
+              }
+            >
+              {data.sun.above_geometric_horizon ? 'YES' : 'NO'}
+            </span>
+          </div>
+
+          <div className="visibility-row">
+            <span>Earth above horizon</span>
+            <span
+              className={
+                data.earth.above_geometric_horizon
+                  ? 'status-positive'
+                  : 'status-negative'
+              }
+            >
+              {data.earth.above_geometric_horizon ? 'YES' : 'NO'}
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function App() {
-  const [site, setSite] = useState(sites[0].name)
+  const [siteA, setSiteA] = useState('alpha')
+  const [siteB, setSiteB] = useState('beta')
   const [date, setDate] = useState('2026-11-14')
-  const [conditions, setConditions] =
-    useState<Conditions | null>(null)
+
+  const [dataA, setDataA] = useState<Conditions | null>(null)
+  const [dataB, setDataB] = useState<Conditions | null>(null)
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const selectedSite = sites.find(s => s.name === site)!
+  const selectedA = sites.find(s => s.id === siteA)!
+  const selectedB = sites.find(s => s.id === siteB)!
 
   useEffect(() => {
     const controller = new AbortController()
 
-    async function fetchConditions() {
+    async function loadComparison() {
       setLoading(true)
       setError('')
-      setConditions(null)
+      setDataA(null)
+      setDataB(null)
 
       try {
-        const params = new URLSearchParams({
-          lat: String(selectedSite.latitude),
-          lon: String(selectedSite.longitude),
-          day: date,
-        })
-
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/conditions?${params}`,
-          { signal: controller.signal }
+        const resultA = await getConditions(
+         selectedA,
+         date,
+         controller.signal
         )
 
-        if (!response.ok) {
-          const body = await response.json().catch(() => null)
-          throw new Error(
-            body?.detail || `API error: ${response.status}`
-          )
+        if (!controller.signal.aborted) {
+          setDataA(resultA)
         }
 
-        const data: Conditions = await response.json()
+        const resultB = await getConditions(
+         selectedB,
+         date,
+         controller.signal
+        )
 
         if (!controller.signal.aborted) {
-          setConditions(data)
+         setDataB(resultB)
         }
+
       } catch (err) {
         if (!controller.signal.aborted) {
           setError(
-            err instanceof Error ? err.message : 'Unknown error'
+            err instanceof Error
+              ? err.message
+              : 'Unable to retrieve NASA data'
           )
         }
       } finally {
@@ -98,10 +216,18 @@ function App() {
       }
     }
 
-    fetchConditions()
+    loadComparison()
 
     return () => controller.abort()
-  }, [selectedSite.latitude, selectedSite.longitude, date])
+  }, [
+    selectedA.latitude,
+    selectedA.longitude,
+    selectedB.latitude,
+    selectedB.longitude,
+    date,
+  ])
+
+  const sameSite = siteA === siteB
 
   return (
     <div className="app">
@@ -114,132 +240,159 @@ function App() {
 
       <main>
         <section className="hero">
-          <div className="eyebrow">LUNAR MISSION PLANNING</div>
+          <div className="eyebrow">
+            LUNAR MISSION ANALYSIS
+          </div>
+
           <h1>
             Explore the Moon.
             <br />
-            Plan the Mission.
+            Compare the Possibilities.
           </h1>
+
           <p>
-            Explore lunar coordinates and mission dates using
-            NASA-derived Sun and Earth position data.
+            Compare lunar locations and mission dates
+            using NASA JPL Horizons astronomical data.
           </p>
         </section>
 
-        <section className="dashboard">
-          <div className="panel">
-            <h2>Mission Configuration</h2>
+        <section className="panel configuration-panel">
+          <h2>Mission Configuration</h2>
 
-            <label htmlFor="site">Landing Site</label>
-            <select
-              id="site"
-              value={site}
-              onChange={e => setSite(e.target.value)}
-            >
-              {sites.map(s => (
-                <option key={s.name} value={s.name}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          <div className="configuration-grid">
+            <div>
+              <label htmlFor="siteA">Landing Site A</label>
+              <select
+                id="siteA"
+                value={siteA}
+                onChange={e => setSiteA(e.target.value)}
+              >
+                {sites.map(site => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <label htmlFor="date">Mission Date</label>
-            <input
-              id="date"
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
+            <div>
+              <label htmlFor="siteB">Landing Site B</label>
+              <select
+                id="siteB"
+                value={siteB}
+                onChange={e => setSiteB(e.target.value)}
+              >
+                {sites.map(site => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <div className="site-info">
-              <h3>Selected Location</h3>
-              <p>{selectedSite.name}</p>
-              <p>Latitude: {selectedSite.latitude}°</p>
-              <p>Longitude: {selectedSite.longitude}°</p>
-              <p className="muted">
-                Demonstration coordinates — not verified landing sites.
-              </p>
+            <div>
+              <label htmlFor="date">Mission Date</label>
+              <input
+                id="date"
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+              />
             </div>
           </div>
 
-          <div className="panel">
-            <h2>Mission Conditions</h2>
+          {sameSite && (
+            <div className="notice">
+              You selected the same site twice.
+              Choose different sites for a meaningful comparison.
+            </div>
+          )}
+
+          <p className="muted">
+            Observation time: 12:00 UTC.
+            All locations are demonstration coordinates,
+            not verified landing sites.
+          </p>
+        </section>
+
+        {error && (
+          <div className="notice error-notice">
+            Unable to load comparison: {error}
+          </div>
+        )}
+
+        <section className="comparison-section">
+          <div className="section-heading">
+            <h2>Landing Site Comparison</h2>
             <p className="muted">
-              Observation: {date} at 12:00 UTC
+              Sun and Earth positions relative to the
+              geometric lunar horizon
             </p>
+          </div>
 
-            {loading && (
-              <p>Retrieving NASA astronomical data...</p>
-            )}
+          <div className="comparison-grid">
+            <SiteResults
+              title="SITE A"
+              site={selectedA}
+              data={dataA}
+              loading={loading}
+            />
 
-            {error && (
-              <div className="notice">
-                Unable to retrieve data: {error}
-              </div>
-            )}
-
-            {conditions && !loading && (
-              <>
-                <div className="metric">
-                  <span>☀ Sun Elevation</span>
-                  <strong>
-                    {conditions.sun.elevation_deg.toFixed(3)}°
-                  </strong>
-                </div>
-
-                <div className="metric">
-                  <span>☀ Sun Azimuth</span>
-                  <strong>
-                    {conditions.sun.azimuth_deg.toFixed(3)}°
-                  </strong>
-                </div>
-
-                <div className="metric">
-                  <span>🌍 Earth Elevation</span>
-                  <strong>
-                    {conditions.earth.elevation_deg.toFixed(3)}°
-                  </strong>
-                </div>
-
-                <div className="metric">
-                  <span>🌍 Earth Azimuth</span>
-                  <strong>
-                    {conditions.earth.azimuth_deg.toFixed(3)}°
-                  </strong>
-                </div>
-
-                <div className="metric">
-                  <span>☀ Geometric Sun Visibility</span>
-                  <strong>
-                    {conditions.sun.above_geometric_horizon
-                      ? 'Above Horizon'
-                      : 'Below Horizon'}
-                  </strong>
-                </div>
-
-                <div className="metric">
-                  <span>📡 Direct Earth Line of Sight</span>
-                  <strong>
-                    {conditions.earth.above_geometric_horizon
-                      ? 'Geometrically Possible'
-                      : 'Earth Below Horizon'}
-                  </strong>
-                </div>
-
-                <div className="notice">
-                  Source: {conditions.source}
-                  <br />
-                  <br />
-                  {conditions.limitations}
-                </div>
-              </>
-            )}
+            <SiteResults
+              title="SITE B"
+              site={selectedB}
+              data={dataB}
+              loading={loading}
+            />
           </div>
         </section>
+
+        {dataA && dataB && !loading && (
+          <section className="panel analysis-panel">
+            <h2>Comparison Analysis</h2>
+
+            <div className="metric">
+              <span>Difference in Sun Elevation (A − B)</span>
+              <strong>
+                {formatAngle(
+                  dataA.sun.elevation_deg -
+                  dataB.sun.elevation_deg
+                )}
+              </strong>
+            </div>
+
+            <div className="metric">
+              <span>Difference in Earth Elevation (A − B)</span>
+              <strong>
+                {formatAngle(
+                  dataA.earth.elevation_deg -
+                  dataB.earth.elevation_deg
+                )}
+              </strong>
+            </div>
+
+            <div className="notice">
+              Measurements represent a single observation
+              at 12:00 UTC on {date}.
+              <br /><br />
+              Higher elevation angles do not automatically
+              mean a location is safer or more suitable
+              for landing.
+              <br /><br />
+              Local terrain, prolonged illumination,
+              communication windows, and other engineering
+              constraints have not yet been evaluated.
+              <br /><br />
+              Source: NASA JPL Horizons.
+              Scientific validation is ongoing.
+            </div>
+          </section>
+        )}
       </main>
 
       <footer>
-        Lunaris Labs · Team Pitzer Connect · NASA Space Apps 2026
+        Lunaris Labs · Team Pitzer Connect ·
+        NASA Space Apps Challenge 2026
       </footer>
     </div>
   )

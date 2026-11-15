@@ -1,16 +1,26 @@
 
+/* Lunaris core styles */
+
 :root {
   font-family: Inter, system-ui, Arial, sans-serif;
   color: #e8efff;
   background: #080e1c;
+  font-synthesis: none;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
+html, body, #root {
+  min-width: 320px;
+  min-height: 100%;
   margin: 0;
+}
+
+body {
+  background: #080e1c;
+  color: #e8efff;
 }
 
 .app {
@@ -65,12 +75,6 @@ h1 {
   line-height: 1.7;
 }
 
-.dashboard {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
 .panel {
   padding: 30px;
   border: 1px solid #253556;
@@ -80,7 +84,7 @@ h1 {
 
 h2 {
   margin-top: 0;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 label {
@@ -97,28 +101,8 @@ input {
   border-radius: 8px;
   border: 1px solid #344665;
   background: #0b1426;
-  color: white;
+  color: #e8efff;
   font-size: 15px;
-}
-
-.site-info {
-  margin-top: 28px;
-  padding: 20px;
-  background: #182844;
-  border-radius: 10px;
-}
-
-.site-info h3 {
-  color: #91b4ff;
-  margin-top: 0;
-}
-
-.site-info p {
-  margin: 9px 0;
-}
-
-.muted {
-  color: #9aabc9;
 }
 
 .metric {
@@ -134,6 +118,10 @@ input {
   text-align: right;
 }
 
+.muted {
+  color: #9aabc9;
+}
+
 .notice {
   margin-top: 25px;
   padding: 18px;
@@ -142,6 +130,7 @@ input {
   color: #afc0df;
   line-height: 1.6;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 footer {
@@ -151,13 +140,108 @@ footer {
   font-size: 13px;
 }
 
-@media (max-width: 760px) {
-  .dashboard {
+
+/* Phase 4: Landing Site Comparison */
+
+.configuration-panel {
+  margin-bottom: 35px;
+}
+
+.configuration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.configuration-panel > .muted {
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.comparison-section {
+  margin: 40px 0;
+}
+
+.section-heading {
+  margin-bottom: 22px;
+}
+
+.section-heading h2 {
+  margin-bottom: 8px;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.comparison-card {
+  padding: 28px;
+  border: 1px solid #293d63;
+  border-radius: 16px;
+  background: #111b30;
+}
+
+.site-heading {
+  margin-bottom: 22px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #293957;
+}
+
+.site-label {
+  font-size: 12px;
+  color: #8cafff;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+.site-heading h3 {
+  font-size: 23px;
+  margin: 12px 0;
+  color: #e8efff;
+}
+
+.site-heading p {
+  font-size: 13px;
+  color: #94a8cc;
+}
+
+.visibility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0;
+  border-bottom: 1px solid #293957;
+  font-size: 14px;
+}
+
+.status-positive {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.status-negative {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.analysis-panel {
+  margin-top: 30px;
+}
+
+.error-notice {
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+@media (max-width: 850px) {
+  .configuration-grid {
     grid-template-columns: 1fr;
   }
 
-  .header {
-    flex-direction: column;
-    gap: 12px;
+  .comparison-grid {
+    grid-template-columns: 1fr;
   }
 }
